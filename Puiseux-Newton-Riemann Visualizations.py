@@ -148,20 +148,28 @@ def add_headroom(ax, top_pad=0.08, bottom_pad=0.05):
         return
     ax.set_ylim(ymin - span * bottom_pad, ymax + span * top_pad)
 
-def styled_legend(ax, loc='upper right', ncol=1, bbox_to_anchor=None, handles=None):
-    """Standard legend with thin black frame and small font."""
+def styled_legend(ax, loc='upper right', ncol=1, bbox_to_anchor=None, handles=None, **legend_kwargs):
+    """Standard legend with thin black frame and small font.
+
+    The legacy ``linewidth`` keyword (sometimes passed by callers) is stripped
+    to avoid Matplotlib ``Legend`` init errors, and the frame linewidth is set
+    after creation to keep the thin border styling consistent across versions.
+    """
+    frame_linewidth = legend_kwargs.pop('linewidth', 0.5)
     legend = ax.legend(
         loc=loc,
         ncol=ncol,
         bbox_to_anchor=bbox_to_anchor,
         frameon=True,
-        framealpha=0.95,
-        edgecolor='black',
         fontsize=LEGEND_FS,
         handles=handles,
+        **legend_kwargs,
     )
     if legend and legend.get_frame() is not None:
-        legend.get_frame().set_linewidth(0.5)
+        frame = legend.get_frame()
+        frame.set_linewidth(frame_linewidth)
+        frame.set_edgecolor('black')
+        frame.set_alpha(0.95)
     return legend
 
 # ============================================================================
