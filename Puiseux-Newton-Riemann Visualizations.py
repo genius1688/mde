@@ -381,18 +381,18 @@ def create_fig1b_powerline_bundle():
         colorsys.hls_to_rgb(h, l * 1.0, s)   # E3: lighter
     ]
 
-    accent_color = COLORS['accent1']
-
     # Left panel: All three lines with unified hue
-    ax1.plot(n_range, E1, 'o-', linewidth=3.0, markersize=13,
-             markerfacecolor=accent_color, markeredgecolor=colors_lines[0],
-             label=r"$E_1(\alpha-2+pn+r)$: $y''$ term (overlaps $E_2$)",
-             color=colors_lines[0], zorder=2)
-    ax1.plot(n_range, E2, 's-', linewidth=2.5, markersize=8,
-             label=r"$E_2(\beta-1+pn+r)$: $y'$ term", color=colors_lines[1],
-             zorder=3)
+    ax1.plot(n_range, E1, 'o-',
+             color=COLORS['accent1'], linewidth=4.0, markersize=9,
+             label=r"$E_1(\alpha-2+pn+r)$: $y''$ term",
+             zorder=2, clip_on=False)
+    ax1.plot(n_range, E2, 's--',
+             color=COLORS['secondary'], linewidth=2.0, markersize=6,
+             label=r"$E_2(\beta-1+pn+r)$: $y'$ term",
+             zorder=3, clip_on=False)
     ax1.plot(n_range, E3, '^-', linewidth=2.5, markersize=8,
-             label=r"$E_3(pn+r)$: $y$ term", color=colors_lines[2], zorder=3)
+             label=r"$E_3(pn+r)$: $y$ term", color=colors_lines[2],
+             zorder=3, clip_on=False)
     
     # ADD BRACES showing n -> n +/- 1 shift
     for n_val in [1, 2]:
@@ -408,7 +408,7 @@ def create_fig1b_powerline_bundle():
     apply_axis_styling(ax1, xlabel=r'Index $n$', ylabel=r'Exponent of $x$',
                        title='Affine Power Lines: n-shift enforces alignment',
                        rotate_xticks=True)
-    styled_legend(ax1, loc='lower right')
+    styled_legend(ax1, loc='upper left', framealpha=0.9)
     ax1.grid(True, alpha=0.3, linestyle='--', linewidth=0.6)
 
     ax1.xaxis.set_major_locator(MaxNLocator(integer=True))
@@ -416,7 +416,7 @@ def create_fig1b_powerline_bundle():
     y_min_1 = np.min([E1.min(), E2.min(), E3.min()])
     y_max_1 = np.max([E1.max(), E2.max(), E3.max()])
     ax1.set_xlim(n_range[0], n_range[-1])
-    ax1.set_ylim(y_min_1 - 0.1, y_max_1 + 0.1)
+    ax1.set_ylim(y_min_1, y_max_1)
 
     # Right panel: Zoomed with p as CONTRASTING ACCENT color
     n_zoom = np.arange(0, 5)
@@ -424,13 +424,14 @@ def create_fig1b_powerline_bundle():
     E2_zoom = beta - 1 + p * n_zoom + r
     E3_zoom = p * n_zoom + r
 
-    ax2.plot(n_zoom, E1_zoom, 'o-', linewidth=3.0, markersize=13,
-             markerfacecolor=accent_color, markeredgecolor=colors_lines[0],
-             label=r"$E_1$", color=colors_lines[0], zorder=2)
-    ax2.plot(n_zoom, E2_zoom, 's-', linewidth=2.5, markersize=9,
-             label=r"$E_2$", color=colors_lines[1], zorder=3)
+    ax2.plot(n_zoom, E1_zoom, 'o-',
+             color=COLORS['accent1'], linewidth=4.0, markersize=9,
+             label=r"$E_1$", zorder=2, clip_on=False)
+    ax2.plot(n_zoom, E2_zoom, 's--',
+             color=COLORS['secondary'], linewidth=2.0, markersize=6,
+             label=r"$E_2$", zorder=3, clip_on=False)
     ax2.plot(n_zoom, E3_zoom, '^-', linewidth=2.5, markersize=10,
-             label=r"$E_3$", color=colors_lines[2], zorder=3)
+             label=r"$E_3$", color=colors_lines[2], zorder=3, clip_on=False)
     
     # Highlight p step as contrasting accent
     ax2.annotate('', xy=(1, E3_zoom[1]), xytext=(0, E3_zoom[0]),
@@ -461,7 +462,7 @@ def create_fig1b_powerline_bundle():
     y_min_2 = np.min([E1_zoom.min(), E2_zoom.min(), E3_zoom.min()])
     y_max_2 = np.max([E1_zoom.max(), E2_zoom.max(), E3_zoom.max()])
     ax2.set_xlim(n_zoom[0], n_zoom[-1])
-    ax2.set_ylim(y_min_2 - 0.1, y_max_2 + 0.1)
+    ax2.set_ylim(y_min_2, y_max_2)
     save_figure(fig, 'fig1b_powerline_bundle.pdf', 'section1')
     save_figure(fig, 'fig1b_powerline_bundle.png', 'section1')
     plt.close()
