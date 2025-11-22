@@ -89,7 +89,9 @@ plt.rcParams.update({
 # OUTPUT DIRECTORY SETUP
 # ============================================================================
 
-OUTPUT_DIR = Path(__file__).resolve().parent / "figure"
+# Resolve output relative to the script location (not caller CWD)
+SCRIPT_DIR = Path(__file__).resolve().parent
+OUTPUT_DIR = SCRIPT_DIR / "figure"
 OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
 def save_figure(fig, filename, subfolder=None):
@@ -130,7 +132,12 @@ def apply_axis_styling(ax, xlabel=None, ylabel=None, title=None, rotate_xticks=T
             label.set_ha('right')
 
     ax.tick_params(labelsize=TICK_FONT, width=0.8)
-    ax.margins(x=0.02, y=0.05 if tight_y else 0.08)
+    ax.margins(x=0.0, y=0.05 if tight_y else 0.08)
+
+    fig = ax.get_figure()
+    fig.canvas.draw_idle()
+    # Ensure square panels after layout computation
+    fig.canvas.draw()
     ax.set_box_aspect(1)
 
 def add_headroom(ax, top_pad=0.08, bottom_pad=0.05):
@@ -141,11 +148,11 @@ def add_headroom(ax, top_pad=0.08, bottom_pad=0.05):
         return
     ax.set_ylim(ymin - span * bottom_pad, ymax + span * top_pad)
 
-def styled_legend(ax, loc='upper right', ncol=1, bbox_to_anchor=None):
+def styled_legend(ax, loc='upper right', ncol=1, bbox_to_anchor=None, handles=None):
     """Standard legend with thin black frame and small font."""
     legend = ax.legend(loc=loc, ncol=ncol, bbox_to_anchor=bbox_to_anchor,
                        frameon=True, framealpha=0.95, edgecolor='black',
-                       linewidth=0.5, fontsize=LEGEND_FS)
+                       linewidth=0.5, fontsize=LEGEND_FS, handles=handles)
     return legend
 
 # ============================================================================
@@ -200,7 +207,7 @@ def create_fig1a_solvability_map():
     # Cap infinite/large values for visualization
     P = np.minimum(P, 5)
     
-    fig, ax = plt.subplots(figsize=(4.2, 3.8), constrained_layout=True)
+    fig, ax = plt.subplots(figsize=FIGSIZE_SINGLE, constrained_layout=True)
     
     # DISCRETE colormap (6 bins) to reinforce gcd quantization
     from matplotlib.colors import LinearSegmentedColormap, BoundaryNorm
@@ -342,7 +349,9 @@ def create_fig1b_powerline_bundle():
     E2 = beta - 1 + p * n_range + r   # y' term
     E3 = p * n_range + r               # y term
     
-    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(7.2, 3.8), constrained_layout=True)
+    fig, (ax1, ax2) = plt.subplots(
+        1, 2, figsize=(FIGSIZE_SINGLE[0] * 2, FIGSIZE_SINGLE[1]), constrained_layout=True
+    )
     
     # UNIFIED HUE with increasing luminance
     from matplotlib.colors import to_rgb
@@ -428,7 +437,9 @@ def create_figNP1_newton_polygon_general():
     print("Creating Figure NP-1: Newton Polygon (General Cases)")
     print("="*60)
     
-    fig, axes = plt.subplots(2, 2, figsize=(7.4, 7.4), constrained_layout=True)
+    fig, axes = plt.subplots(
+        2, 2, figsize=(FIGSIZE_SINGLE[0] * 2, FIGSIZE_SINGLE[1] * 2), constrained_layout=True
+    )
     # SUPER-CAPTION explaining geometric rule
     fig.suptitle('Newton Polygon: Lower convex hull = lower envelope of points $(k, e_k)$; '
                  r'ONLY the steepest (most negative) slope $\sigma$ gives valid Puiseux step $p = 1/|\sigma|$', 
@@ -588,7 +599,7 @@ def create_figNP2_newton_polygon_mother():
     print("Creating Figure NP-2: Newton Polygon (Mother Problem - CORRECTED)")
     print("="*60)
     
-    fig, ax = plt.subplots(figsize=(4.2, 4.2), constrained_layout=True)
+    fig, ax = plt.subplots(figsize=FIGSIZE_SINGLE, constrained_layout=True)
     
     # Mother problem: α=4/3, β=1/3
     alpha, beta = 4/3, 1/3
@@ -699,7 +710,9 @@ def create_fig_riemann_lift():
     print("Creating Figure: Riemann Surface Lift")
     print("="*60)
     
-    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(7.2, 3.6), constrained_layout=True)
+    fig, (ax1, ax2) = plt.subplots(
+        1, 2, figsize=(FIGSIZE_SINGLE[0] * 2, FIGSIZE_SINGLE[1]), constrained_layout=True
+    )
     
     # Left: x-plane with multi-valued branches
     theta = np.linspace(0, 4*np.pi, 200)
@@ -781,7 +794,7 @@ def create_fig_threeleaf_structure():
     print("Creating Figure: Three-Leaf Riemann Surface (3D + 2D Inset)")
     print("="*60)
     
-    fig = plt.figure(figsize=(7.2, 3.8), constrained_layout=True)
+    fig = plt.figure(figsize=(FIGSIZE_SINGLE[0] * 2, FIGSIZE_SINGLE[1]), constrained_layout=True)
     ax = fig.add_subplot(121, projection='3d')
     
     # Create three sheets
@@ -841,8 +854,7 @@ def create_fig_threeleaf_structure():
         plt.Line2D([0], [0], color='k', lw=2, linestyle='--', label='Branch cut'),
         plt.Line2D([0], [0], color='r', lw=2, label='Sheet connection')
     ]
-    ax.legend(handles=legend_elements, fontsize=LEGEND_FS, loc='upper left',
-              framealpha=0.95, edgecolor='black', linewidth=0.5)
+    styled_legend(ax, loc='upper left', handles=legend_elements)
     
     # Add deck map annotation
     ax.text2D(0.5, 0.97, r'Deck map: $g(w) = e^{2\pi i/3} w$ (rotation by $120^\circ$)', 
@@ -906,7 +918,9 @@ def create_fig_monodromy_path():
     print("Creating Figure: Monodromy Path")
     print("="*60)
     
-    fig, axes = plt.subplots(1, 3, figsize=(10.2, 3.6), constrained_layout=True)
+    fig, axes = plt.subplots(
+        1, 3, figsize=(FIGSIZE_SINGLE[0] * 3, FIGSIZE_SINGLE[1]), constrained_layout=True
+    )
     
     loop_counts = [1, 2, 3]
     titles = [
@@ -1071,7 +1085,7 @@ All figures provided in both:
 
 ## Usage in LaTeX
 ```latex
-\\includegraphics[width=0.8\\textwidth]{Visualization/section1/fig1a_solvability_map.pdf}
+\\includegraphics[width=0.8\\textwidth]{figure/section1/fig1a_solvability_map.pdf}
 ```
 
 ## Technical Details
