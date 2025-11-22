@@ -112,14 +112,14 @@ def save_figure(fig, filename, subfolder=None):
 # ============================================================================
 
 def apply_axis_styling(ax, xlabel=None, ylabel=None, title=None, rotate_xticks=True,
-                       y_locator=None, x_locator=None, tight_y=True):
+                       y_locator=None, x_locator=None, tight_y=True, title_fs=None):
     """Apply shared typography, ticks, and aspect styling to an Axes."""
     if xlabel:
         ax.set_xlabel(xlabel, fontsize=AXIS_FONT, fontweight='bold')
     if ylabel:
         ax.set_ylabel(ylabel, fontsize=AXIS_FONT, fontweight='bold')
     if title:
-        ax.set_title(title, fontsize=AXIS_FONT + 2, fontweight='bold', pad=10)
+        ax.set_title(title, fontsize=title_fs or (AXIS_FONT + 2), fontweight='bold', pad=10)
 
     if x_locator is not None:
         ax.xaxis.set_major_locator(x_locator)
@@ -407,7 +407,7 @@ def create_fig1b_powerline_bundle():
     
     apply_axis_styling(ax1, xlabel=r'Index $n$', ylabel=r'Exponent of $x$',
                        title='Affine Power Lines: n-shift enforces alignment',
-                       rotate_xticks=True)
+                       rotate_xticks=True, title_fs=AXIS_FONT + 1)
     styled_legend(ax1, loc='upper left', framealpha=0.9)
     ax1.grid(True, alpha=0.3, linestyle='--', linewidth=0.6)
 
@@ -449,13 +449,13 @@ def create_fig1b_powerline_bundle():
     
     apply_axis_styling(ax2, xlabel=r'Index $n$', ylabel=r'Exponent of $x$',
                        title='Power Alignment Detail (Mother Problem)',
-                       rotate_xticks=True)
+                       rotate_xticks=True, title_fs=AXIS_FONT + 1)
     handles, labels = ax2.get_legend_handles_labels()
     if len(labels) >= 2:
         labels[0] = r"$E_1 \equiv E_2$ (degenerate)"
         del handles[1]
         del labels[1]
-    styled_legend(ax2, loc='lower right', handles=handles, labels=labels)
+    styled_legend(ax2, loc='upper left', handles=handles, labels=labels)
     ax2.grid(True, alpha=0.3, linestyle='--', linewidth=0.6)
     ax2.xaxis.set_major_locator(MaxNLocator(integer=True))
 
