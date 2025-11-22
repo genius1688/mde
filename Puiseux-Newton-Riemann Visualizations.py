@@ -150,9 +150,18 @@ def add_headroom(ax, top_pad=0.08, bottom_pad=0.05):
 
 def styled_legend(ax, loc='upper right', ncol=1, bbox_to_anchor=None, handles=None):
     """Standard legend with thin black frame and small font."""
-    legend = ax.legend(loc=loc, ncol=ncol, bbox_to_anchor=bbox_to_anchor,
-                       frameon=True, framealpha=0.95, edgecolor='black',
-                       linewidth=0.5, fontsize=LEGEND_FS, handles=handles)
+    legend = ax.legend(
+        loc=loc,
+        ncol=ncol,
+        bbox_to_anchor=bbox_to_anchor,
+        frameon=True,
+        framealpha=0.95,
+        edgecolor='black',
+        fontsize=LEGEND_FS,
+        handles=handles,
+    )
+    if legend and legend.get_frame() is not None:
+        legend.get_frame().set_linewidth(0.5)
     return legend
 
 # ============================================================================
