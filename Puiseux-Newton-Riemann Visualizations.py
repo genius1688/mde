@@ -1,0 +1,1099 @@
+"""
+Puiseux-Newton-Riemann Visualizations
+=====================================
+Publication-quality figures for the mathematical report on ODE reducibility analysis.
+
+Author: Generated for Mathematics Report
+Date: 2025-11-13
+Output: repo-relative `figure/section*` folders
+"""
+
+import numpy as np
+import matplotlib.pyplot as plt
+import matplotlib.patches as mpatches
+from matplotlib import cm
+from mpl_toolkits.mplot3d import Axes3D
+from matplotlib.patches import FancyArrowPatch, Circle, Wedge, Rectangle
+from mpl_toolkits.mplot3d import proj3d
+from fractions import Fraction
+import os
+from pathlib import Path
+from matplotlib.ticker import MaxNLocator
+
+# ============================================================================
+# COLOR PALETTE CONFIGURATION
+# ============================================================================
+
+# Typography and sizing constants
+AXIS_FONT = 11
+TICK_FONT = 8
+LEGEND_FS = 7
+PANEL_FS = 13
+ANNO_FS = 7
+FIGSIZE_SINGLE = (3.4, 3.4)
+
+# Natural Vintage Palette (warm, earthy)
+PALETTE_VINTAGE = {
+    'light_blue': '#acd2d6',
+    'sage_green': '#91a5a1', 
+    'cream': '#fff8db',
+    'gold': '#e6b451',
+    'dark_green': '#5e6e54'
+}
+
+# Contrast Palette (cool, professional)
+PALETTE_CONTRAST = {
+    'dark_teal': '#1F3A3D',
+    'navy': '#2C3E50',
+    'medium_blue': '#4B8DA3',
+    'light_cyan': '#A8DADC',
+    'pale_white': '#F1FAEE'
+}
+
+# Academic color scheme combining both
+COLORS = {
+    'primary': PALETTE_CONTRAST['navy'],
+    'secondary': PALETTE_CONTRAST['medium_blue'],
+    'accent1': PALETTE_VINTAGE['gold'],
+    'accent2': PALETTE_VINTAGE['dark_green'],
+    'light1': PALETTE_CONTRAST['light_cyan'],
+    'light2': PALETTE_VINTAGE['light_blue'],
+    'background': PALETTE_CONTRAST['pale_white'],
+    'neutral': PALETTE_VINTAGE['sage_green'],
+    'highlight': PALETTE_VINTAGE['cream']
+}
+
+# Global matplotlib settings for publication quality
+plt.rcParams.update({
+    'font.family': 'serif',
+    'font.serif': ['Times New Roman', 'DejaVu Serif'],
+    'font.size': AXIS_FONT,
+    'axes.labelsize': AXIS_FONT,
+    'axes.labelweight': 'bold',
+    'axes.titlesize': AXIS_FONT + 2,
+    'xtick.labelsize': TICK_FONT,
+    'ytick.labelsize': TICK_FONT,
+    'legend.fontsize': LEGEND_FS,
+    'figure.titlesize': AXIS_FONT + 3,
+    'figure.dpi': 300,
+    'savefig.dpi': 300,
+    'savefig.bbox': 'tight',
+    'savefig.pad_inches': 0.01,
+    'axes.grid': True,
+    'grid.alpha': 0.3,
+    'grid.linestyle': '--',
+    'axes.axisbelow': True
+})
+
+# ============================================================================
+# OUTPUT DIRECTORY SETUP
+# ============================================================================
+
+OUTPUT_DIR = Path(__file__).resolve().parent / "figure"
+OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+
+def save_figure(fig, filename, subfolder=None):
+    """Save figure with consistent formatting."""
+    if subfolder:
+        save_path = OUTPUT_DIR / subfolder
+        save_path.mkdir(parents=True, exist_ok=True)
+    else:
+        save_path = OUTPUT_DIR
+    
+    full_path = save_path / filename
+    fig.savefig(full_path, dpi=300, bbox_inches='tight', facecolor='white')
+    print(f"Saved: {full_path}")
+    return full_path
+
+# ============================================================================
+# STYLING HELPERS
+# ============================================================================
+
+def apply_axis_styling(ax, xlabel=None, ylabel=None, title=None, rotate_xticks=True,
+                       y_locator=None, x_locator=None, tight_y=True):
+    """Apply shared typography, ticks, and aspect styling to an Axes."""
+    if xlabel:
+        ax.set_xlabel(xlabel, fontsize=AXIS_FONT, fontweight='bold')
+    if ylabel:
+        ax.set_ylabel(ylabel, fontsize=AXIS_FONT, fontweight='bold')
+    if title:
+        ax.set_title(title, fontsize=AXIS_FONT + 2, fontweight='bold', pad=10)
+
+    if x_locator is not None:
+        ax.xaxis.set_major_locator(x_locator)
+    if y_locator is not None:
+        ax.yaxis.set_major_locator(y_locator)
+
+    if rotate_xticks:
+        for label in ax.get_xticklabels():
+            label.set_rotation(35)
+            label.set_ha('right')
+
+    ax.tick_params(labelsize=TICK_FONT, width=0.8)
+    ax.margins(x=0.02, y=0.05 if tight_y else 0.08)
+    ax.set_box_aspect(1)
+
+def add_headroom(ax, top_pad=0.08, bottom_pad=0.05):
+    """Add 5–10% vertical padding to avoid cramped annotations."""
+    ymin, ymax = ax.get_ylim()
+    span = ymax - ymin
+    if span == 0:
+        return
+    ax.set_ylim(ymin - span * bottom_pad, ymax + span * top_pad)
+
+def styled_legend(ax, loc='upper right', ncol=1, bbox_to_anchor=None):
+    """Standard legend with thin black frame and small font."""
+    legend = ax.legend(loc=loc, ncol=ncol, bbox_to_anchor=bbox_to_anchor,
+                       frameon=True, framealpha=0.95, edgecolor='black',
+                       linewidth=0.5, fontsize=LEGEND_FS)
+    return legend
+
+# ============================================================================
+# FIGURE 1a: SOLVABILITY MAP - (α,β) plane heatmap
+# ============================================================================
+
+def gcd_rational(a, b, tol=1e-6):
+    """Compute GCD of two rational numbers expressed as fractions."""
+    try:
+        frac_a = Fraction(a).limit_denominator(1000)
+        frac_b = Fraction(b).limit_denominator(1000)
+        from math import gcd as int_gcd
+        g = int_gcd(frac_a.numerator * frac_b.denominator, 
+                    frac_b.numerator * frac_a.denominator)
+        d = frac_a.denominator * frac_b.denominator
+        result = Fraction(g, d)
+        return float(result)
+    except:
+        return np.nan
+
+def compute_puiseux_step(alpha, beta):
+    """Compute p = gcd_Q{2-α, 1-β}."""
+    diff1 = 2 - alpha
+    diff2 = 1 - beta
+    
+    if abs(diff1) < 1e-10 or abs(diff2) < 1e-10:
+        return np.inf
+    
+    return gcd_rational(diff1, diff2)
+
+# ============================================================================
+# FIGURE 1a: SOLVABILITY MAP - (α,β) plane heatmap (REDESIGNED)
+# ============================================================================
+
+def create_fig1a_solvability_map():
+    """Fig 1a: Solvability map with DISCRETE colormap and dual colorbar."""
+    print("\n" + "="*60)
+    print("Creating Figure 1a: Solvability Map (Optimized)")
+    print("="*60)
+    
+    # Create grid
+    alpha_range = np.linspace(-1, 5, 400)
+    beta_range = np.linspace(-1, 4, 400)
+    Alpha, Beta = np.meshgrid(alpha_range, beta_range)
+    
+    # Compute Puiseux step for each point
+    P = np.zeros_like(Alpha)
+    for i in range(Alpha.shape[0]):
+        for j in range(Alpha.shape[1]):
+            P[i, j] = compute_puiseux_step(Alpha[i, j], Beta[i, j])
+    
+    # Cap infinite/large values for visualization
+    P = np.minimum(P, 5)
+    
+    fig, ax = plt.subplots(figsize=(4.2, 3.8), constrained_layout=True)
+    
+    # DISCRETE colormap (6 bins) to reinforce gcd quantization
+    from matplotlib.colors import LinearSegmentedColormap, BoundaryNorm
+    colors_map = [
+        COLORS['highlight'],      # Light cream/yellow
+        COLORS['light2'],         # Light blue
+        COLORS['light1'],         # Light cyan
+        COLORS['secondary'],      # Medium blue
+        COLORS['neutral'],        # Sage green
+        COLORS['accent2']         # Dark green
+    ]
+    n_bins = 6  # Discrete bins
+    cmap_custom = LinearSegmentedColormap.from_list('academic', colors_map, N=n_bins)
+    bounds = np.linspace(0, 5, n_bins + 1)
+    norm = BoundaryNorm(bounds, cmap_custom.N)
+    
+    # Create heatmap with DISCRETE colormap
+    im = ax.contourf(Alpha, Beta, P, levels=bounds, cmap=cmap_custom, norm=norm, alpha=0.85)
+    
+    # Add discrete contour lines for specific p values
+    contour_levels = [1/3, 1/2, 2/3, 1, 3/2, 2, 3]
+    cs = ax.contour(Alpha, Beta, P, levels=contour_levels, colors='white', 
+                    linewidths=1.2, alpha=0.5, linestyles='--')
+    ax.clabel(cs, inline=True, fontsize=ANNO_FS, fmt='p=%.2f', 
+              inline_spacing=8, use_clabeltext=True)
+    
+    # Highlight constant-coefficient line with CONTRASTING DASHED stroke
+    alpha_cc = np.linspace(-1, 5, 100)
+    beta_cc = 1 - (2 - alpha_cc)
+    ax.plot(alpha_cc, beta_cc, 'r--', linewidth=2.5, dashes=(8, 4),
+            label=r'Constant-coeff: $2-\alpha = 1-\beta$', zorder=5, alpha=0.9)
+    
+    # Mark the mother problem point as GLYPH with call-out
+    alpha_mother, beta_mother = 4/3, 1/3
+    ax.plot(alpha_mother, beta_mother, 'rD', markersize=10, 
+            label=r'Mother: $(\alpha,\beta)=(4/3,1/3)$', zorder=6, 
+            markeredgecolor='darkred', markeredgewidth=1.5, markerfacecolor='red')
+    
+    # Add call-out box for mother problem (visually anchored)
+    ax.annotate(r'$p=2/3, m=3$', xy=(alpha_mother, beta_mother), 
+               xytext=(alpha_mother + 0.7, beta_mother + 0.7),
+               fontsize=ANNO_FS, color='darkred', fontweight='bold',
+               bbox=dict(boxstyle='round,pad=0.5', facecolor='lightyellow', 
+                        edgecolor='darkred', linewidth=1.0),
+               arrowprops=dict(arrowstyle='->', color='darkred', lw=1.2, shrinkA=6))
+    
+    # Add key regions annotations
+    annotations = [
+        {'pos': (1.5, 0.5), 'text': r'$p = 2-\alpha = 1-\beta$', 
+         'desc': 'Reducible region'},
+        {'pos': (3.5, 3), 'text': r'Large $p$', 
+         'desc': 'Higher ramification'},
+        {'pos': (0.5, 2.5), 'text': r'Small $p$', 
+         'desc': 'Lower ramification'}
+    ]
+    
+    for anno in annotations:
+        ax.annotate(anno['text'] + '\n' + f"({anno['desc']})", 
+                   xy=anno['pos'], fontsize=ANNO_FS, ha='center',
+                   bbox=dict(boxstyle='round,pad=0.5', 
+                            facecolor=COLORS['background'], 
+                            alpha=0.9, edgecolor=COLORS['neutral'], linewidth=1.0),
+                   style='italic')
+    
+    # Enhanced explanation box
+    explanation = (
+        r'$\mathbf{Puiseux\ Step:}\ p = \gcd_{\mathbb{Q}}\{2-\alpha,\,1-\beta\}$' + '\n' +
+        r'Determines ramification index $m = 1/p$ for substitution $x = w^m$'
+    )
+    ax.text(0.5, 0.02, explanation, transform=ax.transAxes, 
+           fontsize=AXIS_FONT, ha='center', va='bottom',
+           bbox=dict(boxstyle='round,pad=0.6', facecolor='white', 
+                    alpha=0.95, edgecolor=COLORS['primary'], linewidth=1.2))
+    
+    apply_axis_styling(
+        ax,
+        xlabel=r'$\alpha$ (exponent of $x$ in $y^{\prime\prime}$ term)',
+        ylabel=r'$\beta$ (exponent of $x$ in $y^{\prime}$ term)',
+        title=r'Solvability Map: Puiseux Step $p = \gcd_{\mathbb{Q}}\{2-\alpha,\,1-\beta\}$',
+        rotate_xticks=True
+    )
+    ax.grid(True, alpha=0.25, linestyle=':', color='gray', linewidth=0.6)
+    
+    # DUAL COLORBAR: Primary for p, secondary for m=1/p
+    from mpl_toolkits.axes_grid1 import make_axes_locatable
+    divider = make_axes_locatable(ax)
+    cax1 = divider.append_axes("right", size="2.5%", pad=0.1)
+    cax2 = divider.append_axes("right", size="2.5%", pad=0.5)
+    
+    # Primary colorbar: Puiseux step p
+    cbar1 = plt.colorbar(im, cax=cax1)
+    cbar1.set_label('Puiseux step $p$', fontsize=AXIS_FONT, fontweight='bold',
+                    rotation=270, labelpad=16)
+    cbar1.ax.tick_params(labelsize=TICK_FONT)
+    
+    # Secondary colorbar: sheets m = 1/p at integer ticks
+    # Create discrete m values
+    m_ticks = [1, 2, 3, 5, 10]
+    p_from_m = [1/m for m in m_ticks]
+    cbar2 = fig.colorbar(im, cax=cax2, ticks=p_from_m)
+    cbar2.ax.set_yticklabels([f'{m}' for m in m_ticks])
+    cbar2.set_label('Sheets $m = 1/p$', fontsize=AXIS_FONT, fontweight='bold',
+                    rotation=270, labelpad=14)
+    cbar2.ax.tick_params(labelsize=TICK_FONT)
+    
+    ax.set_xlim(-1, 5)
+    ax.set_ylim(-1, 4)
+    add_headroom(ax)
+    
+    # Add grid reference lines
+    ax.axhline(y=0, color='k', linewidth=0.5, alpha=0.3, linestyle='-')
+    ax.axvline(x=0, color='k', linewidth=0.5, alpha=0.3, linestyle='-')
+
+    styled_legend(ax, loc='upper right')
+    
+    save_figure(fig, 'fig1a_solvability_map.pdf', 'section1')
+    save_figure(fig, 'fig1a_solvability_map.png', 'section1')
+    plt.close()
+
+# ============================================================================
+# FIGURE 1b: POWER-LINE BUNDLE - Affine lines showing exponent alignment
+# ============================================================================
+
+def create_fig1b_powerline_bundle():
+    """Fig 1b: Three affine lines with UNIFIED HUE and n-shift braces."""
+    print("\n" + "="*60)
+    print("Creating Figure 1b: Power-line Bundle (Optimized)")
+    print("="*60)
+    
+    # Parameters for mother problem
+    alpha, beta = 4/3, 1/3
+    p = 2/3  # Puiseux step
+    r = 0    # Starting exponent
+    
+    n_range = np.arange(-2, 8)
+    
+    # Three exponent sequences
+    E1 = alpha - 2 + p * n_range + r  # y'' term
+    E2 = beta - 1 + p * n_range + r   # y' term
+    E3 = p * n_range + r               # y term
+    
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(7.2, 3.8), constrained_layout=True)
+    
+    # UNIFIED HUE with increasing luminance
+    from matplotlib.colors import to_rgb
+    import colorsys
+    base_color = to_rgb(COLORS['secondary'])
+    h, l, s = colorsys.rgb_to_hls(*base_color)
+    colors_lines = [
+        colorsys.hls_to_rgb(h, l * 0.6, s),  # E1: darker
+        colorsys.hls_to_rgb(h, l * 0.8, s),  # E2: medium
+        colorsys.hls_to_rgb(h, l * 1.0, s)   # E3: lighter
+    ]
+    
+    # Left panel: All three lines with unified hue
+    ax1.plot(n_range, E1, 'o-', linewidth=2.5, markersize=8, 
+             label=r"$E_1(\alpha-2+pn+r)$: $y''$ term", color=colors_lines[0])
+    ax1.plot(n_range, E2, 's-', linewidth=2.5, markersize=8, 
+             label=r"$E_2(\beta-1+pn+r)$: $y'$ term", color=colors_lines[1])
+    ax1.plot(n_range, E3, '^-', linewidth=2.5, markersize=8, 
+             label=r"$E_3(pn+r)$: $y$ term", color=colors_lines[2])
+    
+    # ADD BRACES showing n -> n +/- 1 shift
+    for n_val in [1, 2]:
+        ax1.axvline(n_val, color='gray', linestyle=':', alpha=0.3)
+    
+    # Compact annotation for n-shift alignment
+    ax1.annotate('', xy=(2, E1[4]), xytext=(1, E2[3]),
+                arrowprops=dict(arrowstyle='<->', color=COLORS['accent1'], lw=2))
+    ax1.text(1.5, (E1[4] + E2[3])/2 + 0.1, r'$n \mapsto n+1$',
+            fontsize=ANNO_FS, ha='center', color=COLORS['accent1'], fontweight='bold',
+            bbox=dict(boxstyle='round,pad=0.3', facecolor='white', alpha=0.9, linewidth=0.8))
+    
+    apply_axis_styling(ax1, xlabel=r'Index $n$', ylabel=r'Exponent of $x$',
+                       title='Affine Power Lines: n-shift enforces alignment',
+                       rotate_xticks=True)
+    styled_legend(ax1, loc='lower right')
+    ax1.grid(True, alpha=0.3, linestyle='--', linewidth=0.6)
+    add_headroom(ax1)
+    
+    # Right panel: Zoomed with p as CONTRASTING ACCENT color
+    n_zoom = np.arange(0, 5)
+    E1_zoom = alpha - 2 + p * n_zoom + r
+    E2_zoom = beta - 1 + p * n_zoom + r
+    E3_zoom = p * n_zoom + r
+    
+    ax2.plot(n_zoom, E1_zoom, 'o-', linewidth=2.5, markersize=10, 
+             label=r"$E_1$", color=colors_lines[0])
+    ax2.plot(n_zoom, E2_zoom, 's-', linewidth=2.5, markersize=10, 
+             label=r"$E_2$", color=colors_lines[1])
+    ax2.plot(n_zoom, E3_zoom, '^-', linewidth=2.5, markersize=10, 
+             label=r"$E_3$", color=colors_lines[2])
+    
+    # Highlight p step as contrasting accent
+    ax2.annotate('', xy=(1, E3_zoom[1]), xytext=(0, E3_zoom[0]),
+                arrowprops=dict(arrowstyle='<->', color=COLORS['accent1'], lw=3))
+    ax2.text(0.5, (E3_zoom[0] + E3_zoom[1])/2 - 0.15, r'Step $p=2/3$',
+            fontsize=ANNO_FS, ha='center', color=COLORS['accent1'], fontweight='bold',
+            bbox=dict(boxstyle='round,pad=0.4', facecolor=COLORS['highlight'], alpha=0.9, linewidth=0.8))
+    
+    # Annotate alignment
+    for i, n_val in enumerate(n_zoom):
+        y_pos = E3_zoom[i]
+        ax2.annotate(f'$n={n_val}$', xy=(n_val, y_pos), 
+                    xytext=(n_val + 0.2, y_pos - 0.3),
+                    fontsize=ANNO_FS, color=COLORS['accent2'])
+    
+    apply_axis_styling(ax2, xlabel=r'Index $n$', ylabel=r'Exponent of $x$',
+                       title='Power Alignment Detail (Mother Problem)',
+                       rotate_xticks=True)
+    styled_legend(ax2, loc='lower right')
+    ax2.grid(True, alpha=0.3, linestyle='--', linewidth=0.6)
+    add_headroom(ax2)
+    save_figure(fig, 'fig1b_powerline_bundle.pdf', 'section1')
+    save_figure(fig, 'fig1b_powerline_bundle.png', 'section1')
+    plt.close()
+
+# ============================================================================
+# FIGURE NP-1: NEWTON POLYGON - General cases (Dashboard with 4 scenarios)
+# ============================================================================
+
+def create_figNP1_newton_polygon_general():
+    """Fig NP-1: Newton polygon classification showing 4 typical cases."""
+    print("\n" + "="*60)
+    print("Creating Figure NP-1: Newton Polygon (General Cases)")
+    print("="*60)
+    
+    fig, axes = plt.subplots(2, 2, figsize=(7.4, 7.4), constrained_layout=True)
+    # SUPER-CAPTION explaining geometric rule
+    fig.suptitle('Newton Polygon: Lower convex hull = lower envelope of points $(k, e_k)$; '
+                 r'ONLY the steepest (most negative) slope $\sigma$ gives valid Puiseux step $p = 1/|\sigma|$', 
+                 fontsize=AXIS_FONT + 1, fontweight='bold', y=0.998, style='italic')
+    
+    # Case configurations: (e_values, title, description)
+    cases = [
+        # Case 1: Single edge (all three collinear)
+        {
+            'e_vals': [0, 0.6, 1.2],
+            'hull_edges': [(0, 2)],
+            'title': 'Case I: Single Edge (Collinear)',
+            'desc': r'$P_0, P_1, P_2$ collinear $\Rightarrow$ one slope $\sigma$',
+            'color': COLORS['primary']
+        },
+        # Case 2: Two edges (P0-P1, P1-P2) - only steepest is Puiseux slope
+        {
+            'e_vals': [0, 0.8, 1.2],
+            'hull_edges': [(0, 1, 'main'), (1, 2, 'secondary')],  # main = Puiseux slope
+            'title': 'Case II: Two-Edge Convex Break',
+            'desc': r'Lower hull has 2 segments; ONLY steepest $\sigma_{\max}$ gives $p$',
+            'color': COLORS['accent1']
+        },
+        # Case 3: P1 above line (skip P1)
+        {
+            'e_vals': [0, 1.4, 1.2],
+            'hull_edges': [(0, 2)],
+            'title': 'Case III: Point Above Hull',
+            'desc': r'$P_1$ above lower convex hull $\Rightarrow$ does not contribute',
+            'color': COLORS['accent2']
+        },
+        # Case 4: Horizontal segment (degenerate, no Puiseux step)
+        {
+            'e_vals': [0, 0.67, 0.67],
+            'hull_edges': [(0, 1), (1, 2, 'horizontal')],
+            'title': 'Case IV: Horizontal Edge (Degenerate)',
+            'desc': r'Horizontal edge: $\sigma = 0 \Rightarrow$ no valid Puiseux step',
+            'color': COLORS['secondary']
+        }
+    ]
+    
+    for idx, (ax, case) in enumerate(zip(axes.flat, cases)):
+        k_vals = [0, 1, 2]
+        e_vals = case['e_vals']
+        
+        # Plot all three points (IMPROVED: smaller dots, cleaner labels)
+        for i, (k, e) in enumerate(zip(k_vals, e_vals)):
+            # Check if point is on hull
+            on_hull = any(i in edge[:2] for edge in case['hull_edges'])
+            color = case['color'] if on_hull else 'gray'
+            size = 10 if on_hull else 7  # Smaller dots
+            alpha = 1.0 if on_hull else 0.4
+            
+            ax.plot(k, e, 'o', markersize=size, color=color, alpha=alpha, zorder=4)
+            
+            # IMPROVED: Cleaner label format
+            label = f'$({k},{e:.2g})$'  # Remove P_i, just coordinates
+            offset = (0.08, 0.10) if i != 1 else (0.08, -0.12)
+            ax.text(k + offset[0], e + offset[1], label, 
+                   fontsize=ANNO_FS, alpha=alpha, ha='left', va='bottom')
+        
+        # Draw hull edges (IMPROVED: distinguish main/secondary slopes)
+        for edge_idx, edge in enumerate(case['hull_edges']):
+            if len(edge) == 3 and edge[2] == 'horizontal':  # Horizontal (Case IV)
+                i, j = edge[0], edge[1]
+                ax.plot([k_vals[i], k_vals[j]], [e_vals[i], e_vals[j]], 
+                       '--', linewidth=2.5, color='gray', alpha=0.7, zorder=2,
+                       label='Non-Puiseux edge')
+                ax.text((k_vals[i] + k_vals[j])/2, e_vals[i] + 0.15, 
+                       r'$\sigma=0$ (no $p$)', fontsize=ANNO_FS, ha='center', 
+                       style='italic', color='gray',
+                       bbox=dict(boxstyle='round,pad=0.3', facecolor='white', alpha=0.8))
+            else:
+                i, j = edge[0], edge[1]
+                # Check if this is main or secondary edge (Case II)
+                is_main = (len(edge) < 3) or (edge[2] == 'main')
+                linewidth = 4.0 if is_main else 2.0
+                linestyle = '-' if is_main else '--'
+                edge_alpha = 0.9 if is_main else 0.5
+                
+                ax.plot([k_vals[i], k_vals[j]], [e_vals[i], e_vals[j]], 
+                       linestyle, linewidth=linewidth, color=case['color'], 
+                       zorder=3, alpha=edge_alpha,
+                       label='Lower hull edge' if is_main and edge_idx == 0 else None)
+                
+                # ONLY annotate main slope (steepest) for Case II
+                if k_vals[j] != k_vals[i] and is_main:
+                    slope = (e_vals[j] - e_vals[i]) / (k_vals[j] - k_vals[i])
+                    p = 1 / abs(slope) if slope != 0 else float('inf')
+                    mid_k = (k_vals[i] + k_vals[j]) / 2
+                    mid_e = (e_vals[i] + e_vals[j]) / 2
+                    
+                    # IMPROVED: Show formula p = 1/|σ|
+                    ax.annotate(f'$\\sigma={slope:.2f}$\n$p=1/|\\sigma|={p:.2f}$', 
+                               xy=(mid_k, mid_e), 
+                               xytext=(mid_k + 0.35, mid_e + 0.18),
+                               fontsize=ANNO_FS, color=case['color'], fontweight='bold',
+                               bbox=dict(boxstyle='round,pad=0.35', 
+                                       facecolor='white', alpha=0.9, 
+                                       edgecolor=case['color'], linewidth=1.5),
+                               arrowprops=dict(arrowstyle='->', color=case['color'], lw=1.5))
+                elif not is_main:  # Secondary edge (Case II only)
+                    slope = (e_vals[j] - e_vals[i]) / (k_vals[j] - k_vals[i])
+                    mid_k = (k_vals[i] + k_vals[j]) / 2
+                    mid_e = (e_vals[i] + e_vals[j]) / 2
+                    ax.text(mid_k, mid_e - 0.15, f'$\\sigma={slope:.2f}$\n(not used)', 
+                           fontsize=ANNO_FS, ha='center', style='italic', color='gray')
+        
+        # Shade below hull
+        if case['hull_edges'][0][1] == 2:  # Direct connection
+            ax.fill_between([0, 2], [e_vals[0], e_vals[2]], -0.2,
+                           alpha=0.12, color=case['color'])
+        else:  # Two segments
+            ax.fill_between([0, 1, 2], [e_vals[0], e_vals[1], e_vals[2]], -0.2,
+                           alpha=0.12, color=case['color'])
+        
+        # Formatting (IMPROVED: fixed y-axis ticks, cleaner grid)
+        ax.set_xlim(-0.3, 2.5)
+        
+        # FIXED: Ensure monotonic y-axis ticks
+        y_max = max(e_vals) + 0.35
+        y_min = -0.15
+        ax.set_ylim(y_min, y_max)
+        y_ticks = np.linspace(0, np.ceil(y_max * 2) / 2, 5)  # 5 evenly spaced ticks
+        ax.set_yticks(y_ticks)
+        ax.set_yticklabels([f'{y:.2g}' for y in y_ticks])
+        
+        apply_axis_styling(
+            ax,
+            xlabel=r'Derivative order $k$',
+            ylabel=r'Power offset $e_k$',
+            title=case['title'],
+            rotate_xticks=True,
+            x_locator=MaxNLocator(integer=True, nbins=4)
+        )
+        ax.text(0.5, 0.03, case['desc'], transform=ax.transAxes, 
+               fontsize=AXIS_FONT, ha='center', style='italic',
+               bbox=dict(boxstyle='round,pad=0.4', facecolor=COLORS['highlight'], alpha=0.8))
+        ax.grid(True, alpha=0.2, linestyle=':', linewidth=0.6)  # Ultra-light grid
+        add_headroom(ax)
+        
+        # Add legend if applicable
+        if idx == 1:  # Case II has main/secondary distinction
+            styled_legend(ax, loc='upper left')
+    
+    save_figure(fig, 'figNP1_newton_polygon_general.pdf', 'section3')
+    save_figure(fig, 'figNP1_newton_polygon_general.png', 'section3')
+    plt.close()
+
+# ============================================================================
+# FIGURE NP-2: NEWTON POLYGON - Mother problem specific (CORRECTED)
+# ============================================================================
+
+def create_figNP2_newton_polygon_mother():
+    """Fig NP-2: Newton polygon for 9x^(4/3)y'' + 6x^(1/3)y' + y = 0 (CORRECTED)."""
+    print("\n" + "="*60)
+    print("Creating Figure NP-2: Newton Polygon (Mother Problem - CORRECTED)")
+    print("="*60)
+    
+    fig, ax = plt.subplots(figsize=(4.2, 4.2), constrained_layout=True)
+    
+    # Mother problem: α=4/3, β=1/3
+    alpha, beta = 4/3, 1/3
+    k_vals = np.array([0, 1, 2])
+    e_vals = np.array([0, 1 - beta, 2 - alpha])  # [0, 2/3, 2/3]
+    
+    # Plot points with different styles
+    # P0 and P2 are on the hull (dark), P1 is NOT on the lower hull edge
+    colors_points = [COLORS['primary'], 'gray', COLORS['primary']]
+    sizes = [10, 8, 10]
+    alphas = [1.0, 0.5, 1.0]
+    
+    for i, (k, e, c, s, a) in enumerate(zip(k_vals, e_vals, colors_points, sizes, alphas)):
+        ax.plot(k, e, 'o', markersize=s, color=c, zorder=4, alpha=a)
+    
+    # Annotate with exact values - ADJUSTED POSITIONS
+    labels = [
+        r'$P_0=(0,0)$',
+        r'$P_1=(1,\frac{2}{3})$',
+        r'$P_2=(2,\frac{2}{3})$'
+    ]
+    # Adjusted offsets to avoid overlap
+    offsets = [(0.15, -0.12), (-0.45, 0.08), (0.15, 0.08)]
+    for k, e, label, offset in zip(k_vals, e_vals, labels, offsets):
+        alpha_text = 0.5 if label == labels[1] else 1.0
+        ax.annotate(label, xy=(k, e), xytext=(k + offset[0], e + offset[1]),
+                   fontsize=AXIS_FONT, fontweight='bold', alpha=alpha_text,
+                   bbox=dict(boxstyle='round,pad=0.3', facecolor='white', alpha=0.9, linewidth=1.2))
+    
+    # CORRECT LOWER HULL: P0 to P2 directly (slope = 2/3 / 2 = 1/3)
+    ax.plot([0, 2], [0, 2/3], '-', linewidth=3, color=COLORS['primary'], 
+            label='Lower edge: $P_0 \\to P_2$', zorder=3, alpha=0.9)
+    
+    # P1 to P2 is horizontal (NOT on lower hull, just for reference)
+    ax.plot([1, 2], [2/3, 2/3], ':', linewidth=1.5, color='gray', 
+            label='Horizontal segment (not on lower hull)', alpha=0.5, zorder=2)
+    
+    # Shade region below the CORRECT hull
+    ax.fill_between([0, 2], [0, 2/3], -0.12, alpha=0.18, color=COLORS['primary'])
+    
+    # Slope calculation - ANNOTATE ON THE CORRECT EDGE
+    slope = (2/3 - 0) / (2 - 0)  # This is 1/3
+    ax.annotate(r'$\sigma = \dfrac{e_2 - e_0}{k_2 - k_0} = \dfrac{2/3 - 0}{2 - 0} = \dfrac{1}{3}$', 
+               xy=(1.0, 1/3), xytext=(0.6, 0.15),
+               fontsize=AXIS_FONT, color=COLORS['primary'], fontweight='bold',
+               arrowprops=dict(arrowstyle='->', color=COLORS['primary'], lw=2.0, 
+                             connectionstyle="arc3,rad=0.2"))
+    
+    # GEOMETRIC INSET: Visual explanation of "drop per +1 order"
+    inset_ax = fig.add_axes([0.13, 0.64, 0.3, 0.27])
+    inset_ax.plot([0, 2], [0, -2/3], 'o-', linewidth=3, markersize=9, color=COLORS['primary'])
+    # Horizontal arrow (+2 in k)
+    inset_ax.annotate('', xy=(2, 0), xytext=(0, 0),
+                     arrowprops=dict(arrowstyle='->', color=COLORS['accent1'], lw=2.5))
+    inset_ax.text(1.0, 0.08, r'$\Delta k = +2$', fontsize=AXIS_FONT, ha='center', 
+                 color=COLORS['accent1'], fontweight='bold')
+    # Vertical arrow (-2/3 in e)
+    inset_ax.annotate('', xy=(2, -2/3), xytext=(2, 0),
+                     arrowprops=dict(arrowstyle='->', color=COLORS['accent2'], lw=2.5))
+    inset_ax.text(2.25, -1/3, r'$\Delta e = -\frac{2}{3}$', fontsize=AXIS_FONT, ha='left',
+                 color=COLORS['accent2'], fontweight='bold')
+    inset_ax.set_xlim(-0.3, 2.7)
+    inset_ax.set_ylim(-0.9, 0.2)
+    inset_ax.set_aspect('equal')
+    inset_ax.axis('off')
+    inset_ax.text(1.0, -0.85, r'Geometric interpretation: $\sigma = \frac{\Delta e}{\Delta k} = -\frac{1}{3}$', 
+                 fontsize=ANNO_FS, ha='center', style='italic',
+                 bbox=dict(boxstyle='round,pad=0.5', facecolor=COLORS['highlight'], alpha=0.95))
+    
+    # Result box - MOVED TO BOTTOM RIGHT as requested
+    textstr = r'$\sigma = \dfrac{1}{3} \quad \Rightarrow \quad p = \dfrac{1}{|\sigma|} = 3$'
+    props = dict(boxstyle='round,pad=0.5', facecolor=COLORS['accent1'], 
+                alpha=0.95, edgecolor=COLORS['primary'], linewidth=2)
+    ax.text(0.98, 0.05, textstr, transform=ax.transAxes, fontsize=PANEL_FS,
+            verticalalignment='bottom', horizontalalignment='right', bbox=props)
+    
+    # Add explanation box at top
+    explanation = r'Lower convex hull: direct connection $P_0 \to P_2$ (ignores $P_1$)'
+    ax.text(0.5, 0.97, explanation, transform=ax.transAxes, fontsize=AXIS_FONT,
+            verticalalignment='top', horizontalalignment='center', style='italic',
+            bbox=dict(boxstyle='round,pad=0.4', facecolor=COLORS['highlight'], alpha=0.8))
+    
+    apply_axis_styling(
+        ax,
+        xlabel=r'Derivative order $k$',
+        ylabel=r'Power offset $e_k$',
+        title=r'Newton Polygon for $9x^{4/3}y^{\prime\prime} + 6x^{1/3}y^{\prime} + y = 0$',
+        rotate_xticks=True,
+        x_locator=MaxNLocator(integer=True, nbins=4)
+    )
+    styled_legend(ax, loc='upper left')
+    ax.grid(True, alpha=0.3, linestyle='--', linewidth=0.6)
+    ax.set_xlim(-0.3, 2.4)
+    ax.set_ylim(-0.15, 0.95)
+    add_headroom(ax)
+    
+    save_figure(fig, 'figNP2_newton_polygon_mother.pdf', 'section3')
+    save_figure(fig, 'figNP2_newton_polygon_mother.png', 'section3')
+    plt.close()
+
+# ============================================================================
+# FIGURE RIEMANN LIFT: Multi-valued to single-valued lifting
+# ============================================================================
+
+def create_fig_riemann_lift():
+    """Conceptual visualization of lifting from x-plane to w-plane."""
+    print("\n" + "="*60)
+    print("Creating Figure: Riemann Surface Lift")
+    print("="*60)
+    
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(7.2, 3.6), constrained_layout=True)
+    
+    # Left: x-plane with multi-valued branches
+    theta = np.linspace(0, 4*np.pi, 200)
+    r = np.exp(theta / (4*np.pi))
+    
+    # Three branches spiraling
+    for i in range(3):
+        theta_branch = theta + i * 2 * np.pi / 3
+        x_real = r * np.cos(theta_branch)
+        x_imag = r * np.sin(theta_branch)
+        color = [COLORS['primary'], COLORS['accent1'], COLORS['accent2']][i]
+        ax1.plot(x_real, x_imag, linewidth=2.0, alpha=0.8, 
+                label=f'Branch {i+1}', color=color)
+    
+    ax1.plot(0, 0, 'ko', markersize=10, label='Branch point $x=0$', zorder=5)
+    
+    # Add branch cut on negative real axis (ochre color)
+    ax1.plot([-2.5, 0], [0, 0], color='#CC8800', linewidth=3, linestyle='--', 
+            label='Branch cut', alpha=0.7, zorder=4)
+    
+    apply_axis_styling(
+        ax1,
+        xlabel=r'$\mathrm{Re}(x)$',
+        ylabel=r'$\mathrm{Im}(x)$',
+        title=r'Multi-valued function $y(x)$ in $x$-plane',
+        rotate_xticks=True
+    )
+    styled_legend(ax1, loc='upper left')
+    ax1.grid(True, alpha=0.3, linestyle='--', linewidth=0.6)
+    ax1.set_aspect('equal')
+    add_headroom(ax1)
+    
+    # Add covering map annotation
+    ax1.text(0.5, 0.97, r'$\pi: \mathcal{R} \to \mathbb{C}_x$ (covering map)', 
+            transform=ax1.transAxes, fontsize=AXIS_FONT, ha='center', va='top',
+            style='italic', fontweight='bold',
+            bbox=dict(boxstyle='round,pad=0.4', facecolor=COLORS['highlight'], alpha=0.9))
+    
+    # Right: w-plane with single-valued function
+    theta_w = np.linspace(0, 4*np.pi, 200)
+    r_w = np.exp(theta_w / (4*np.pi))
+    
+    x_real_w = r_w * np.cos(theta_w)
+    x_imag_w = r_w * np.sin(theta_w)
+    
+    # Single spiral in w-plane
+    ax2.plot(x_real_w, x_imag_w, linewidth=2.6, color=COLORS['secondary'], 
+            label=r'Single-valued $y(w)$', alpha=0.9)
+    ax2.plot(0, 0, 'ko', markersize=10, label='Regular point $w=0$')
+    
+    apply_axis_styling(
+        ax2,
+        xlabel=r'$\mathrm{Re}(w)$',
+        ylabel=r'$\mathrm{Im}(w)$',
+        title=r'Single-valued after $w = x^{1/m}$ substitution ($\mathcal{R}$ becomes simply-connected)$',
+        rotate_xticks=True
+    )
+    styled_legend(ax2, loc='upper left')
+    ax2.grid(True, alpha=0.3, linestyle='--', linewidth=0.6)
+    ax2.set_aspect('equal')
+    add_headroom(ax2)
+    
+    # Add central annotation
+    fig.text(0.5, 0.02, r'Lifting: $x = w^m$ unwraps multi-valuedness', 
+             ha='center', fontsize=AXIS_FONT + 2, fontweight='bold',
+             bbox=dict(boxstyle='round,pad=0.5', facecolor=COLORS['highlight'], alpha=0.8))
+    
+    save_figure(fig, 'fig_riemann_lift.pdf', 'section4')
+    save_figure(fig, 'fig_riemann_lift.png', 'section4')
+    plt.close()
+
+# ============================================================================
+# FIGURE THREE-LEAF: 3-sheeted Riemann surface structure
+# ============================================================================
+
+def create_fig_threeleaf_structure():
+    """3D visualization of three-sheeted Riemann surface with 2D sheet-index inset."""
+    print("\n" + "="*60)
+    print("Creating Figure: Three-Leaf Riemann Surface (3D + 2D Inset)")
+    print("="*60)
+    
+    fig = plt.figure(figsize=(7.2, 3.8), constrained_layout=True)
+    ax = fig.add_subplot(121, projection='3d')
+    
+    # Create three sheets
+    theta = np.linspace(0, 2*np.pi, 100)
+    r = np.linspace(0.1, 2, 50)
+    Theta, R = np.meshgrid(theta, r)
+    
+    colors_sheets = [COLORS['primary'], COLORS['accent1'], COLORS['accent2']]
+    alphas = [0.6, 0.5, 0.4]
+    labels = ['Sheet 0: $w_0 = x^{1/3}$', 
+              r'Sheet 1: $w_1 = e^{2\pi i/3}x^{1/3}$',
+              r'Sheet 2: $w_2 = e^{4\pi i/3}x^{1/3}$']
+    
+    for i, (color, alpha, label) in enumerate(zip(colors_sheets, alphas, labels)):
+        Z = i * 0.5 * np.ones_like(R)  # Height offset for each sheet
+        X = R * np.cos(Theta)
+        Y = R * np.sin(Theta)
+        
+        surf = ax.plot_surface(X, Y, Z, alpha=alpha, color=color, 
+                              edgecolor='none', label=label)
+        
+        # Add branch cut
+        branch_cut_r = np.linspace(0.1, 2, 20)
+        branch_cut_x = -branch_cut_r
+        branch_cut_y = np.zeros_like(branch_cut_r)
+        branch_cut_z = i * 0.5 * np.ones_like(branch_cut_r)
+        ax.plot(branch_cut_x, branch_cut_y, branch_cut_z, 
+               'k--', linewidth=2, alpha=0.7)
+    
+    # Add connecting curves showing sheet transitions
+    theta_connect = np.linspace(np.pi, 3*np.pi, 50)
+    r_connect = 1.5
+    for i in range(3):
+        theta_start = np.pi + i * 2*np.pi/3
+        theta_segment = theta_start + np.linspace(0, 2*np.pi/3, 30)
+        x_conn = r_connect * np.cos(theta_segment)
+        y_conn = r_connect * np.sin(theta_segment)
+        z_conn = np.linspace(i * 0.5, ((i+1) % 3) * 0.5, 30)
+        ax.plot(x_conn, y_conn, z_conn, 'r-', linewidth=2.5, alpha=0.8)
+    
+    # Mark branch point
+    ax.scatter([0], [0], [0], color='black', s=90, marker='o', 
+              label='Branch point $x=0$')
+    
+    ax.set_xlabel(r'$\mathrm{Re}(x)$', fontsize=AXIS_FONT, fontweight='bold')
+    ax.set_ylabel(r'$\mathrm{Im}(x)$', fontsize=AXIS_FONT, fontweight='bold')
+    ax.set_zlabel('Sheet index', fontsize=AXIS_FONT, fontweight='bold')
+    ax.tick_params(labelsize=TICK_FONT)
+    ax.set_title('Three-Sheeted Riemann Surface for $x^{1/3}$ (3D Ribbon View)', fontsize=AXIS_FONT + 3, pad=12, fontweight='bold')
+    ax.set_box_aspect((1, 1, 0.6))
+    
+    # Manual legend
+    legend_elements = [
+        plt.Line2D([0], [0], color=colors_sheets[0], lw=4, alpha=0.7, label=labels[0]),
+        plt.Line2D([0], [0], color=colors_sheets[1], lw=4, alpha=0.7, label=labels[1]),
+        plt.Line2D([0], [0], color=colors_sheets[2], lw=4, alpha=0.7, label=labels[2]),
+        plt.Line2D([0], [0], color='k', lw=2, linestyle='--', label='Branch cut'),
+        plt.Line2D([0], [0], color='r', lw=2, label='Sheet connection')
+    ]
+    ax.legend(handles=legend_elements, fontsize=LEGEND_FS, loc='upper left',
+              framealpha=0.95, edgecolor='black', linewidth=0.5)
+    
+    # Add deck map annotation
+    ax.text2D(0.5, 0.97, r'Deck map: $g(w) = e^{2\pi i/3} w$ (rotation by $120^\circ$)', 
+             transform=ax.transAxes, fontsize=AXIS_FONT, ha='center', va='top',
+             style='italic', bbox=dict(boxstyle='round,pad=0.4', facecolor=COLORS['highlight'], alpha=0.9))
+    
+    ax.view_init(elev=25, azim=45)
+    
+    # RIGHT: 2D sheet-index inset (top-down view)
+    ax2 = fig.add_subplot(122)
+    angles = np.linspace(0, 2*np.pi, 100)
+    radius = 1.8
+    for i in range(3):
+        start_angle = i * 2 * np.pi / 3
+        end_angle = (i + 1) * 2 * np.pi / 3
+        theta_sector = np.linspace(start_angle, end_angle, 50)
+        x_sector = np.append([0], radius * np.cos(theta_sector))
+        y_sector = np.append([0], radius * np.sin(theta_sector))
+        x_sector = np.append(x_sector, [0])
+        y_sector = np.append(y_sector, [0])
+        color = [COLORS['primary'], COLORS['accent1'], COLORS['accent2']][i]
+        ax2.fill(x_sector, y_sector, color=color, alpha=0.6, edgecolor='black', linewidth=1.5)
+        # Sheet labels
+        mid_angle = (start_angle + end_angle) / 2
+        label_x = 0.8 * radius * np.cos(mid_angle)
+        label_y = 0.8 * radius * np.sin(mid_angle)
+        ax2.text(label_x, label_y, f'Sheet {i}', fontsize=AXIS_FONT + 2, ha='center', va='center',
+                fontweight='bold', bbox=dict(boxstyle='round,pad=0.4', facecolor='white', alpha=0.95, linewidth=1.5))
+    
+    # Branch point
+    ax2.plot(0, 0, 'ko', markersize=13, zorder=5)
+    ax2.text(0, -0.35, r'$x=0$ (branch point)', fontsize=AXIS_FONT, ha='center', fontweight='bold')
+    
+    # Add radial lines showing boundaries
+    for i in range(3):
+        angle = i * 2 * np.pi / 3
+        ax2.plot([0, radius * np.cos(angle)], [0, radius * np.sin(angle)], 
+                'k-', linewidth=1.6, alpha=0.7, zorder=4)
+    
+    ax2.set_xlim(-2.3, 2.3)
+    ax2.set_ylim(-2.3, 2.3)
+    ax2.set_box_aspect(1)
+    ax2.margins(x=0.02, y=0.02)
+    ax2.axis('off')
+    ax2.set_title(r'2D Sheet-Index Map (Top-Down View)', fontsize=AXIS_FONT + 2, fontweight='bold', pad=8)
+    ax2.text(0.5, 0.03, r'Each sheet covers a $120^\circ$ sector in $\mathrm{arg}(x)$', 
+            transform=ax2.transAxes, fontsize=AXIS_FONT, ha='center', style='italic',
+            bbox=dict(boxstyle='round,pad=0.4', facecolor=COLORS['highlight'], alpha=0.9))
+    
+    save_figure(fig, 'fig_threeleaf_structure.pdf', 'section4')
+    save_figure(fig, 'fig_threeleaf_structure.png', 'section4')
+    plt.close()
+
+# ============================================================================
+# FIGURE MONODROMY: Path visualization around branch point
+# ============================================================================
+
+def create_fig_monodromy_path():
+    """Visualization of monodromy: 1, 2, 3 loops around x=0."""
+    print("\n" + "="*60)
+    print("Creating Figure: Monodromy Path")
+    print("="*60)
+    
+    fig, axes = plt.subplots(1, 3, figsize=(10.2, 3.6), constrained_layout=True)
+    
+    loop_counts = [1, 2, 3]
+    titles = [
+        r'After 1 loop ($2\pi$): Sheet $0 \to 1$',
+        r'After 2 loops ($4\pi$): Sheet $0 \to 2$',
+        r'After 3 loops ($6\pi$): Sheet $0 \to 0$'
+    ]
+    
+    for idx, (ax, n_loops, title) in enumerate(zip(axes, loop_counts, titles)):
+        # Draw circle at radius 1
+        theta_circle = np.linspace(0, 2*np.pi, 100)
+        x_circle = np.cos(theta_circle)
+        y_circle = np.sin(theta_circle)
+        ax.plot(x_circle, y_circle, 'k--', linewidth=1, alpha=0.3)
+        
+        # Draw path
+        theta_path = np.linspace(0, 2*np.pi * n_loops, 200)
+        x_path = np.cos(theta_path)
+        y_path = np.sin(theta_path)
+        
+        # Color gradient along path
+        colors_gradient = plt.cm.viridis(np.linspace(0, 1, len(theta_path)))
+        for i in range(len(theta_path)-1):
+            ax.plot(x_path[i:i+2], y_path[i:i+2], 
+                   color=colors_gradient[i], linewidth=2.5)
+        
+        # Add direction arrows at key points
+        arrow_positions = [int(len(theta_path) * p) for p in [0.15, 0.4, 0.65, 0.9]]
+        for pos in arrow_positions:
+            if pos < len(theta_path) - 5:
+                dx = x_path[pos+5] - x_path[pos]
+                dy = y_path[pos+5] - y_path[pos]
+                ax.arrow(x_path[pos], y_path[pos], dx*0.8, dy*0.8, 
+                        head_width=0.12, head_length=0.08, fc=COLORS['accent1'], 
+                        ec=COLORS['accent1'], linewidth=2, zorder=4)
+        
+        # Mark start and end
+        ax.plot(1, 0, 'go', markersize=12, label='Start', zorder=5)
+        ax.plot(x_path[-1], y_path[-1], 'ro', markersize=12, label='End', zorder=5)
+        
+        # Branch point
+        ax.plot(0, 0, 'k*', markersize=15, label='Branch point', zorder=6)
+        
+        # Annotate sheet transitions
+        sheet_start = 0
+        sheet_end = n_loops % 3
+        ax.text(0.5, -1.6, f'Sheet: ${sheet_start} \\to {sheet_end}$', 
+               fontsize=12, ha='center',
+               bbox=dict(boxstyle='round,pad=0.5', facecolor=COLORS['highlight'], alpha=0.8))
+        
+        apply_axis_styling(
+            ax,
+            xlabel=r'$\mathrm{Re}(x)$',
+            ylabel=r'$\mathrm{Im}(x)$',
+            title=title,
+            rotate_xticks=True
+        )
+        styled_legend(ax, loc='upper right')
+        ax.grid(True, alpha=0.3, linestyle='--', linewidth=0.6)
+        ax.set_aspect('equal')
+        ax.set_xlim(-1.5, 1.5)
+        ax.set_ylim(-1.8, 1.5)
+        add_headroom(ax)
+    
+    plt.suptitle('Monodromy: Cyclic Sheet Transitions Around Branch Point', 
+                fontsize=AXIS_FONT + 3, fontweight='bold', y=1.02)
+    
+    # Add global deck map explanation
+    fig.text(0.5, 0.01, r'Deck map: After one loop $\gamma$, sheet permutation given by $g(w) = e^{2\pi i/m} w$ (rotation by $2\pi/m$)', 
+            fontsize=AXIS_FONT, ha='center', style='italic', 
+            bbox=dict(boxstyle='round,pad=0.5', facecolor=COLORS['highlight'], alpha=0.95))
+    
+    save_figure(fig, 'fig_monodromy_path.pdf', 'section4')
+    save_figure(fig, 'fig_monodromy_path.png', 'section4')
+    plt.close()
+
+# ============================================================================
+# MAIN EXECUTION
+# ============================================================================
+
+def create_all_figures():
+    """Generate all figures for the report."""
+    print("\n" + "="*70)
+    print(" PUISEUX-NEWTON-RIEMANN VISUALIZATION SUITE")
+    print(" Publication-Quality Figure Generation")
+    print("="*70)
+    print(f"\nOutput directory: {OUTPUT_DIR}")
+    print("\nColor palette:")
+    print(f"  Primary: {COLORS['primary']}")
+    print(f"  Secondary: {COLORS['secondary']}")
+    print(f"  Accents: {COLORS['accent1']}, {COLORS['accent2']}")
+    print("\n" + "="*70)
+    
+    # Section 1 figures
+    create_fig1a_solvability_map()
+    create_fig1b_powerline_bundle()
+    
+    # Section 3 figures  
+    create_figNP1_newton_polygon_general()
+    create_figNP2_newton_polygon_mother()
+    
+    # Section 4 figures
+    create_fig_riemann_lift()
+    create_fig_threeleaf_structure()
+    create_fig_monodromy_path()
+    
+    print("\n" + "="*70)
+    print(" ALL FIGURES GENERATED SUCCESSFULLY")
+    print("="*70)
+    print(f"\nTotal output files: {len(list(OUTPUT_DIR.rglob('*.*')))}")
+    print(f"Location: {OUTPUT_DIR}")
+    
+    # Create summary README
+    create_readme()
+
+def create_readme():
+    """Generate README documentation for the figures."""
+    readme_content = """# Puiseux-Newton-Riemann Visualizations
+
+## Overview
+Publication-quality figures for the mathematical report:
+*"From Puiseux Series to Newton Polygons and Riemann Surfaces:
+A Unified Framework for Reducibility of ODEs near x=0"*
+
+Generated: 2025-11-13
+
+## Color Palette
+
+### Natural Vintage (Warm)
+- Light Blue: #acd2d6
+- Sage Green: #91a5a1
+- Cream: #fff8db
+- Gold: #e6b451
+- Dark Green: #5e6e54
+
+### Contrast Palette (Cool)
+- Dark Teal: #1F3A3D
+- Navy: #2C3E50
+- Medium Blue: #4B8DA3
+- Light Cyan: #A8DADC
+- Pale White: #F1FAEE
+
+## Figure Inventory
+
+### Section 1: Introduction
+- **fig1a_solvability_map**: (α,β) plane heatmap showing Puiseux step p = gcd_Q{2-α, 1-β}
+- **fig1b_powerline_bundle**: Three affine lines demonstrating exponent alignment
+
+### Section 3: Newton Polygon
+- **figNP1_newton_polygon_general**: General construction with three points and lower hull
+- **figNP2_newton_polygon_mother**: Specific example for 9x^(4/3)y'' + 6x^(1/3)y' + y = 0
+
+### Section 4: Riemann Surfaces
+- **fig_riemann_lift**: Conceptual lifting from multi-valued to single-valued functions
+- **fig_threeleaf_structure**: 3D three-sheeted Riemann surface for x^(1/3)
+- **fig_monodromy_path**: Monodromy visualization showing 1, 2, 3 loops
+
+## File Formats
+All figures provided in both:
+- PDF (vector graphics, recommended for LaTeX)
+- PNG (raster graphics, 300 DPI)
+
+## Usage in LaTeX
+```latex
+\\includegraphics[width=0.8\\textwidth]{Visualization/section1/fig1a_solvability_map.pdf}
+```
+
+## Technical Details
+- Resolution: 300 DPI
+- Font: Times New Roman (serif)
+- Grid: Enabled with 30% alpha
+- Aspect ratios: Optimized for A4 paper
+
+## Contact
+For questions or modifications, refer to the generating script:
+`Puiseux-Newton-Riemann Visualizations.py`
+"""
+    
+    readme_path = OUTPUT_DIR / "README.md"
+    with open(readme_path, 'w', encoding='utf-8') as f:
+        f.write(readme_content)
+    print(f"\n✓ Created documentation: {readme_path}")
+
+# ============================================================================
+# RUN ALL
+# ============================================================================
+
+if __name__ == "__main__":
+    create_all_figures()
+    print("\n✓ Visualization suite complete!\n")
