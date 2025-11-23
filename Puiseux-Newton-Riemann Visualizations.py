@@ -743,15 +743,15 @@ def create_figNP2_newton_polygon_mother():
     ax.plot([2, 2], [0, 2/3], '--', color=COLORS['secondary'], linewidth=1.6, zorder=1)
     ax.text(1.0, -0.05, r'$\Delta k = 2$', ha='center', va='top', fontsize=AXIS_FONT,
             color=COLORS['secondary'], fontweight='bold', clip_on=False)
-    ax.text(2.05, 1/3, r'$\Delta e = \tfrac{2}{3}$', ha='left', va='center', fontsize=AXIS_FONT,
+    ax.text(2.05, 1/3, r'$\Delta e = \frac{2}{3}$', ha='left', va='center', fontsize=AXIS_FONT,
             color=COLORS['secondary'], fontweight='bold', clip_on=False)
 
     # Simplified slope annotation on hypotenuse
-    ax.text(1.05, 0.32, r'$\sigma = \tfrac{1}{3}$', fontsize=AXIS_FONT, fontweight='bold',
+    ax.text(1.05, 0.32, r'$\sigma = \frac{1}{3}$', fontsize=AXIS_FONT, fontweight='bold',
             color=COLORS['primary'], ha='left', va='center', clip_on=False)
     
     # Result box - MOVED TO BOTTOM RIGHT as requested
-    textstr = r'$\sigma = \tfrac{1}{3} \quad \Rightarrow \quad p = \tfrac{1}{|\sigma|} = 3$'
+    textstr = r'$\sigma = \frac{1}{3} \quad \Rightarrow \quad p = \frac{1}{|\sigma|} = 3$'
     props = dict(boxstyle='round,pad=0.5', facecolor=COLORS['accent1'],
                 alpha=0.95, edgecolor=COLORS['primary'], linewidth=2)
     ax.text(0.98, 0.05, textstr, transform=ax.transAxes, fontsize=PANEL_FS,
