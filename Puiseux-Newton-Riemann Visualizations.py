@@ -892,6 +892,9 @@ def create_fig_threeleaf_structure():
 
     fig = plt.figure(figsize=(FIGSIZE_SINGLE[0] * 2, FIGSIZE_SINGLE[1]), constrained_layout=True)
 
+    # Unified palette shared by the 2D range view and 3D surface
+    sheet_colors = [COLORS['primary'], COLORS['accent1'], COLORS['accent2']]
+
     # LEFT: value image on the w-plane (range view)
     ax2 = fig.add_subplot(121)
     radius = 1.8
@@ -904,15 +907,15 @@ def create_fig_threeleaf_structure():
         y_sector = np.append([0], radius * np.sin(theta_sector))
         x_sector = np.append(x_sector, [0])
         y_sector = np.append(y_sector, [0])
-        color = [COLORS['primary'], COLORS['accent1'], COLORS['accent2']][i]
+        color = sheet_colors[i]
         ax2.fill(x_sector, y_sector, color=color, alpha=0.6, edgecolor='black', linewidth=1.5)
         # Sector labels describing the image on the w-plane
         mid_angle = (start_angle + end_angle) / 2
         label_x = 0.8 * radius * np.cos(mid_angle)
         label_y = 0.8 * radius * np.sin(mid_angle)
         ax2.text(label_x, label_y, sector_labels[i], fontsize=AXIS_FONT + 2, ha='center', va='center',
-                 fontweight='bold', bbox=dict(boxstyle='round,pad=0.4', facecolor='white', alpha=0.95, linewidth=1.5),
-                 clip_on=False)
+                 fontweight='bold', bbox=dict(boxstyle='round,pad=0.4', facecolor=color, edgecolor='white',
+                 linewidth=1.5, alpha=0.85), color='white', clip_on=False)
 
     # Branch point and boundaries
     ax2.plot(0, 0, 'ko', markersize=13, zorder=5)
@@ -927,7 +930,7 @@ def create_fig_threeleaf_structure():
     ax2.set_box_aspect(1)
     ax2.margins(x=0.02, y=0.02)
     ax2.axis('off')
-    ax2.set_title(r'Image on the $w$-plane (Range View)', fontsize=AXIS_FONT + 2, fontweight='bold', pad=8)
+    ax2.set_title(r'Image on the $w$-plane (Range View)', fontsize=AXIS_FONT + 2, fontweight='bold', pad=18, y=1.03)
     ax2.text(0.5, 0.03, r'Sheet 0 maps the full $x$-plane to this $120^\circ$ sector',
              transform=ax2.transAxes, fontsize=AXIS_FONT, ha='center', style='italic',
              bbox=dict(boxstyle='round,pad=0.4', facecolor=COLORS['highlight'], alpha=0.9), clip_on=False)
@@ -940,14 +943,13 @@ def create_fig_threeleaf_structure():
     r = np.linspace(0.1, 2, 50)
     Theta, R = np.meshgrid(theta, r)
     
-    colors_sheets = [COLORS['primary'], COLORS['accent1'], COLORS['accent2']]
     alphas = [0.6, 0.5, 0.4]
     labels = ['Sheet 0: $w_0 = x^{1/3}$',
               r'Sheet 1: $w_1 = e^{2\pi i/3}x^{1/3}$',
               r'Sheet 2: $w_2 = e^{4\pi i/3}x^{1/3}$']
     height_step = 0.55
 
-    for i, (color, alpha, label) in enumerate(zip(colors_sheets, alphas, labels)):
+    for i, (color, alpha, label) in enumerate(zip(sheet_colors, alphas, labels)):
         base_z = i * height_step
         Z = base_z + (Theta / (2 * np.pi)) * height_step  # helicoid lift
         X = R * np.cos(Theta)
@@ -970,7 +972,7 @@ def create_fig_threeleaf_structure():
         branch_cut_z = base_z + (np.pi / (2 * np.pi)) * height_step * np.ones_like(branch_cut_r)
         ax.plot(branch_cut_x, branch_cut_y, branch_cut_z,
                 'k--', linewidth=1.4, alpha=0.7)
-    
+
     # Mark branch point axis
     z_axis = np.linspace(0, height_step * 3, 50)
     ax.plot(np.zeros_like(z_axis), np.zeros_like(z_axis), z_axis, color='black', linewidth=2.0, label='Branch point axis')
@@ -980,18 +982,14 @@ def create_fig_threeleaf_structure():
     ax.set_ylabel(r'$\mathrm{Im}(x)$', fontsize=AXIS_FONT, fontweight='bold')
     ax.set_zlabel('Sheet index', fontsize=AXIS_FONT, fontweight='bold')
     ax.tick_params(labelsize=TICK_FONT)
-    ax.set_title('Three-Sheeted Riemann Surface for $x^{1/3}$ (Helicoid View)', fontsize=AXIS_FONT + 3, pad=12, fontweight='bold')
+    ax.set_title('Three-Sheeted Riemann Surface for $x^{1/3}$ (Helicoid View)', fontsize=AXIS_FONT + 3, pad=18, y=1.03, fontweight='bold')
     ax.set_box_aspect((1, 1, 0.8))
-    
-    # Manual legend
-    legend_elements = [
-        plt.Line2D([0], [0], color=colors_sheets[0], lw=4, alpha=0.7, label=labels[0]),
-        plt.Line2D([0], [0], color=colors_sheets[1], lw=4, alpha=0.7, label=labels[1]),
-        plt.Line2D([0], [0], color=colors_sheets[2], lw=4, alpha=0.7, label=labels[2]),
-        plt.Line2D([0], [0], color='k', lw=2, linestyle='--', label='Branch cut'),
-        plt.Line2D([0], [0], color='black', lw=2, label='Branch point axis')
-    ]
-    styled_legend(ax, loc='upper left', handles=legend_elements)
+
+    # Inline labels for structural guides to avoid legend clutter
+    ax.text2D(0.06, 0.92, 'Branch cut (dashed)', transform=ax.transAxes, fontsize=AXIS_FONT,
+              color='k', bbox=dict(boxstyle='round,pad=0.3', facecolor='white', alpha=0.85))
+    ax.text2D(0.06, 0.86, 'Branch point axis', transform=ax.transAxes, fontsize=AXIS_FONT,
+              color='k', bbox=dict(boxstyle='round,pad=0.3', facecolor='white', alpha=0.85))
     
     # Add deck map annotation
     ax.text2D(0.5, 0.97, r'Deck map: $g(w) = e^{2\pi i/3} w$ (rotation by $120^\circ$)', 
