@@ -712,9 +712,9 @@ def create_figNP2_newton_polygon_mother():
     colors_points = [COLORS['primary'], 'gray', COLORS['primary']]
     sizes = [10, 8, 10]
     alphas = [1.0, 0.5, 1.0]
-    
-    for i, (k, e, c, s, a) in enumerate(zip(k_vals, e_vals, colors_points, sizes, alphas)):
-        ax.plot(k, e, 'o', markersize=s, color=c, zorder=4, alpha=a)
+
+    for k, e, c, s, a in zip(k_vals, e_vals, colors_points, sizes, alphas):
+        ax.plot(k, e, 'o', markersize=s, color=c, zorder=4, alpha=a, clip_on=False)
     
     # Annotate with exact values - ADJUSTED POSITIONS
     labels = [
@@ -723,65 +723,46 @@ def create_figNP2_newton_polygon_mother():
         r'$P_2=(2,\frac{2}{3})$'
     ]
     # Adjusted offsets to avoid overlap
-    offsets = [(0.15, -0.12), (-0.45, 0.08), (0.15, 0.08)]
+    offsets = [(-0.25, -0.14), (-0.45, 0.08), (0.18, 0.08)]
     for k, e, label, offset in zip(k_vals, e_vals, labels, offsets):
         alpha_text = 0.5 if label == labels[1] else 1.0
         ax.annotate(label, xy=(k, e), xytext=(k + offset[0], e + offset[1]),
                    fontsize=AXIS_FONT, fontweight='bold', alpha=alpha_text,
-                   bbox=dict(boxstyle='round,pad=0.3', facecolor='white', alpha=0.9, linewidth=1.2))
-    
+                   bbox=dict(boxstyle='round,pad=0.3', facecolor='white', alpha=0.9, linewidth=1.2),
+                   clip_on=False)
+
     # CORRECT LOWER HULL: P0 to P2 directly (slope = 2/3 / 2 = 1/3)
-    ax.plot([0, 2], [0, 2/3], '-', linewidth=3, color=COLORS['primary'], 
-            label='Lower edge: $P_0 \\to P_2$', zorder=3, alpha=0.9)
-    
-    # P1 to P2 is horizontal (NOT on lower hull, just for reference)
-    ax.plot([1, 2], [2/3, 2/3], ':', linewidth=1.5, color='gray', 
-            label='Horizontal segment (not on lower hull)', alpha=0.5, zorder=2)
-    
+    ax.plot([0, 2], [0, 2/3], '-', linewidth=3, color=COLORS['primary'],
+            label='Lower edge: $P_0 \\to P_2$', zorder=3, alpha=0.9, clip_on=False)
+
     # Shade region below the CORRECT hull
     ax.fill_between([0, 2], [0, 2/3], -0.12, alpha=0.18, color=COLORS['primary'])
-    
-    # Slope calculation - ANNOTATE ON THE CORRECT EDGE
-    slope = (2/3 - 0) / (2 - 0)  # This is 1/3
-    ax.annotate(r'$\sigma = \dfrac{e_2 - e_0}{k_2 - k_0} = \dfrac{2/3 - 0}{2 - 0} = \dfrac{1}{3}$', 
-               xy=(1.0, 1/3), xytext=(0.6, 0.15),
-               fontsize=AXIS_FONT, color=COLORS['primary'], fontweight='bold',
-               arrowprops=dict(arrowstyle='->', color=COLORS['primary'], lw=2.0, 
-                             connectionstyle="arc3,rad=0.2"))
-    
-    # GEOMETRIC INSET: Visual explanation of "drop per +1 order"
-    inset_ax = fig.add_axes([0.13, 0.64, 0.3, 0.27])
-    inset_ax.plot([0, 2], [0, -2/3], 'o-', linewidth=3, markersize=9, color=COLORS['primary'])
-    # Horizontal arrow (+2 in k)
-    inset_ax.annotate('', xy=(2, 0), xytext=(0, 0),
-                     arrowprops=dict(arrowstyle='->', color=COLORS['accent1'], lw=2.5))
-    inset_ax.text(1.0, 0.08, r'$\Delta k = +2$', fontsize=AXIS_FONT, ha='center', 
-                 color=COLORS['accent1'], fontweight='bold')
-    # Vertical arrow (-2/3 in e)
-    inset_ax.annotate('', xy=(2, -2/3), xytext=(2, 0),
-                     arrowprops=dict(arrowstyle='->', color=COLORS['accent2'], lw=2.5))
-    inset_ax.text(2.25, -1/3, r'$\Delta e = -\frac{2}{3}$', fontsize=AXIS_FONT, ha='left',
-                 color=COLORS['accent2'], fontweight='bold')
-    inset_ax.set_xlim(-0.3, 2.7)
-    inset_ax.set_ylim(-0.9, 0.2)
-    inset_ax.set_aspect('equal')
-    inset_ax.axis('off')
-    inset_ax.text(1.0, -0.85, r'Geometric interpretation: $\sigma = \frac{\Delta e}{\Delta k} = -\frac{1}{3}$', 
-                 fontsize=ANNO_FS, ha='center', style='italic',
-                 bbox=dict(boxstyle='round,pad=0.5', facecolor=COLORS['highlight'], alpha=0.95))
+
+    # SLOPE TRIANGLE (inset removed): visual rise/run cue under the main edge
+    ax.plot([0, 2], [0, 0], '--', color=COLORS['secondary'], linewidth=1.6, zorder=1)
+    ax.plot([2, 2], [0, 2/3], '--', color=COLORS['secondary'], linewidth=1.6, zorder=1)
+    ax.text(1.0, -0.05, r'$\Delta k = 2$', ha='center', va='top', fontsize=AXIS_FONT,
+            color=COLORS['secondary'], fontweight='bold', clip_on=False)
+    ax.text(2.05, 1/3, r'$\Delta e = \tfrac{2}{3}$', ha='left', va='center', fontsize=AXIS_FONT,
+            color=COLORS['secondary'], fontweight='bold', clip_on=False)
+
+    # Simplified slope annotation on hypotenuse
+    ax.text(1.05, 0.32, r'$\sigma = \tfrac{1}{3}$', fontsize=AXIS_FONT, fontweight='bold',
+            color=COLORS['primary'], ha='left', va='center', clip_on=False)
     
     # Result box - MOVED TO BOTTOM RIGHT as requested
-    textstr = r'$\sigma = \dfrac{1}{3} \quad \Rightarrow \quad p = \dfrac{1}{|\sigma|} = 3$'
-    props = dict(boxstyle='round,pad=0.5', facecolor=COLORS['accent1'], 
+    textstr = r'$\sigma = \tfrac{1}{3} \quad \Rightarrow \quad p = \tfrac{1}{|\sigma|} = 3$'
+    props = dict(boxstyle='round,pad=0.5', facecolor=COLORS['accent1'],
                 alpha=0.95, edgecolor=COLORS['primary'], linewidth=2)
     ax.text(0.98, 0.05, textstr, transform=ax.transAxes, fontsize=PANEL_FS,
-            verticalalignment='bottom', horizontalalignment='right', bbox=props)
+            verticalalignment='bottom', horizontalalignment='right', bbox=props, clip_on=False)
     
     # Add explanation box at top
     explanation = r'Lower convex hull: direct connection $P_0 \to P_2$ (ignores $P_1$)'
     ax.text(0.5, 0.97, explanation, transform=ax.transAxes, fontsize=AXIS_FONT,
             verticalalignment='top', horizontalalignment='center', style='italic',
-            bbox=dict(boxstyle='round,pad=0.4', facecolor=COLORS['highlight'], alpha=0.8))
+            bbox=dict(boxstyle='round,pad=0.4', facecolor=COLORS['highlight'], alpha=0.8),
+            clip_on=False)
     
     apply_axis_styling(
         ax,
@@ -793,9 +774,8 @@ def create_figNP2_newton_polygon_mother():
     )
     styled_legend(ax, loc='upper left')
     ax.grid(True, alpha=0.3, linestyle='--', linewidth=0.6)
-    ax.set_xlim(-0.3, 2.4)
-    ax.set_ylim(-0.15, 0.95)
-    add_headroom(ax)
+    ax.set_xlim(-0.1, 2.2)
+    ax.set_ylim(-0.1, 0.9)
     
     save_figure(fig, 'figNP2_newton_polygon_mother.pdf', 'section3')
     save_figure(fig, 'figNP2_newton_polygon_mother.png', 'section3')
