@@ -102,11 +102,26 @@ def save_figure(fig, filename, subfolder=None):
         save_path.mkdir(parents=True, exist_ok=True)
     else:
         save_path = OUTPUT_DIR
-    
+
     full_path = save_path / filename
-    fig.savefig(full_path, dpi=300, bbox_inches='tight', facecolor='white')
-    print(f"Saved: {full_path}")
-    return full_path
+    try:
+        fig.savefig(full_path, dpi=300, bbox_inches='tight', facecolor='white')
+        print(f"Saved: {full_path}")
+        return full_path
+    except PermissionError:
+        # Fall back to a writable directory when the target path is locked or
+        # protected (e.g., when running from a read-only drive on Windows).
+        fallback_root = Path.cwd() / "figure_fallback"
+        if subfolder:
+            fallback_root = fallback_root / subfolder
+        fallback_root.mkdir(parents=True, exist_ok=True)
+        fallback_path = fallback_root / filename
+        fig.savefig(fallback_path, dpi=300, bbox_inches='tight', facecolor='white')
+        print(
+            "Permission denied for target path; saved to fallback instead: "
+            f"{fallback_path}"
+        )
+        return fallback_path
 
 # ============================================================================
 # STYLING HELPERS
