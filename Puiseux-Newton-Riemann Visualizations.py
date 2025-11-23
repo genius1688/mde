@@ -751,8 +751,8 @@ def create_figNP2_newton_polygon_mother():
         r'$P_1=(1,\frac{2}{3})$',
         r'$P_2=(2,\frac{2}{3})$'
     ]
-    # Adjusted offsets to avoid overlap
-    offsets = [(-0.25, -0.14), (-0.45, 0.08), (0.18, 0.08)]
+    # Adjusted offsets to avoid overlap and keep P0 clear of the y-axis
+    offsets = [(0.1, 0.05), (-0.45, 0.08), (0.18, 0.08)]
     for k, e, label, offset in zip(k_vals, e_vals, labels, offsets):
         alpha_text = 0.5 if label == labels[1] else 1.0
         ax.annotate(label, xy=(k, e), xytext=(k + offset[0], e + offset[1]),
@@ -769,23 +769,23 @@ def create_figNP2_newton_polygon_mother():
     ax.fill_between([0, 2], [0, 2/3], -0.12, alpha=0.14, color=main_color)
 
     # SLOPE TRIANGLE (inset removed): visual rise/run cue under the main edge
-    ax.plot([0, 2], [0, 0], '--', color=COLORS['secondary'], linewidth=1.6, zorder=1, clip_on=False)
-    ax.plot([2, 2], [0, 2/3], '--', color=COLORS['secondary'], linewidth=1.6, zorder=1, clip_on=False)
+    ax.plot([0, 2], [0, 0], '--', color=main_color, linewidth=1.6, zorder=1, clip_on=False)
+    ax.plot([2, 2], [0, 2/3], '--', color=main_color, linewidth=1.6, zorder=1, clip_on=False)
     ax.text(1.0, -0.05, r'$\Delta k = 2$', ha='center', va='top', fontsize=AXIS_FONT,
-            color=COLORS['secondary'], fontweight='bold', clip_on=False)
+            color=main_color, fontweight='bold', clip_on=False)
     ax.text(2.05, 1/3, r'$\Delta e = \frac{2}{3}$', ha='left', va='center', fontsize=AXIS_FONT,
-            color=COLORS['secondary'], fontweight='bold', clip_on=False)
+            color=main_color, fontweight='bold', clip_on=False)
 
     # Simplified slope annotation on hypotenuse
     ax.text(1.05, 0.32, r'$\sigma = \frac{1}{3}$', fontsize=AXIS_FONT, fontweight='bold',
             color=main_color, ha='left', va='center', clip_on=False)
     
-    # Result box - MOVED TO BOTTOM RIGHT as requested
+    # Result box - MOVED TO TOP LEFT (clear space near P1)
     textstr = r'$\sigma = \frac{1}{3} \quad \Rightarrow \quad p = \frac{1}{|\sigma|} = 3$'
     props = dict(boxstyle='round,pad=0.5', facecolor=COLORS['accent1'],
                 alpha=0.95, edgecolor=main_color, linewidth=2)
-    ax.text(0.98, 0.05, textstr, transform=ax.transAxes, fontsize=PANEL_FS,
-            verticalalignment='bottom', horizontalalignment='right', bbox=props, clip_on=False)
+    ax.text(0.05, 0.92, textstr, transform=ax.transAxes, fontsize=PANEL_FS,
+            verticalalignment='top', horizontalalignment='left', bbox=props, clip_on=False)
 
     apply_axis_styling(
         ax,
@@ -796,8 +796,14 @@ def create_figNP2_newton_polygon_mother():
         x_locator=MaxNLocator(integer=True, nbins=4)
     )
     ax.grid(True, alpha=0.3, linestyle='--', linewidth=0.6)
-    ax.set_xlim(-0.2, 2.4)
-    ax.set_ylim(-0.2, 1.0)
+
+    # Keep curves flush to the frame with minimal padding (clip_on already enabled)
+    x_min, x_max = k_vals.min(), k_vals.max()
+    y_min = min(-0.12, e_vals.min())
+    y_max = e_vals.max() + 0.05
+    ax.set_xlim(x_min, x_max)
+    ax.set_ylim(y_min, y_max)
+    ax.margins(x=0.0, y=0.0)
     
     save_figure(fig, 'figNP2_newton_polygon_mother.pdf', 'section3')
     save_figure(fig, 'figNP2_newton_polygon_mother.png', 'section3')
