@@ -56,6 +56,7 @@ COLORS = {
     'secondary': PALETTE_CONTRAST['medium_blue'],
     'accent1': PALETTE_VINTAGE['gold'],
     'accent2': PALETTE_VINTAGE['dark_green'],
+    'light_gray': '#b0b0b0',
     'light1': PALETTE_CONTRAST['light_cyan'],
     'light2': PALETTE_VINTAGE['light_blue'],
     'background': PALETTE_CONTRAST['pale_white'],
@@ -383,7 +384,7 @@ def create_fig1b_powerline_bundle():
 
     # Left panel: All three lines with unified hue
     ax1.plot(n_range, E1, 'o-',
-             color=COLORS['accent1'], linewidth=4.0, markersize=9,
+             color=COLORS['light_gray'], linewidth=4.0, markersize=9,
              label=r"$E_1(\alpha-2+pn+r)$: $y''$ term",
              zorder=2, clip_on=False)
     ax1.plot(n_range, E2, 's--',
@@ -425,7 +426,7 @@ def create_fig1b_powerline_bundle():
     E3_zoom = p * n_zoom + r
 
     ax2.plot(n_zoom, E1_zoom, 'o-',
-             color=COLORS['accent1'], linewidth=4.0, markersize=9,
+             color=COLORS['light_gray'], linewidth=4.0, markersize=9,
              label=r"$E_1$", zorder=2, clip_on=False)
     ax2.plot(n_zoom, E2_zoom, 's--',
              color=COLORS['secondary'], linewidth=2.0, markersize=6,
