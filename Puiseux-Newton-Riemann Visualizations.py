@@ -473,159 +473,185 @@ def create_fig1b_powerline_bundle():
 # ============================================================================
 
 def create_figNP1_newton_polygon_general():
-    """Fig NP-1: Newton polygon classification showing 4 typical cases."""
+    """Fig NP-1: Newton polygon classification (optimized for clarity)."""
     print("\n" + "="*60)
-    print("Creating Figure NP-1: Newton Polygon (General Cases)")
+    print("Creating Figure NP-1: Newton Polygon (Optimized)")
     print("="*60)
-    
-    fig, axes = plt.subplots(
-        2, 2, figsize=(FIGSIZE_SINGLE[0] * 2, FIGSIZE_SINGLE[1] * 2), constrained_layout=True
+
+    fig, axes = plt.subplots(2, 2, figsize=(12, 10), constrained_layout=True)
+
+    fig.suptitle(
+        'Newton Polygon Classification: Lower Convex Hull Selection\n'
+        r'Rule: Only the steepest segment determines the Puiseux step $p = 1/|\sigma|$',
+        fontsize=AXIS_FONT + 3,
+        fontweight='bold',
+        y=1.02,
     )
-    # SUPER-CAPTION explaining geometric rule
-    fig.suptitle('Newton Polygon: Lower convex hull = lower envelope of points $(k, e_k)$; '
-                 r'ONLY the steepest (most negative) slope $\sigma$ gives valid Puiseux step $p = 1/|\sigma|$', 
-                 fontsize=AXIS_FONT + 1, fontweight='bold', y=0.998, style='italic')
-    
-    # Case configurations: (e_values, title, description)
+
     cases = [
-        # Case 1: Single edge (all three collinear)
         {
             'e_vals': [0, 0.6, 1.2],
-            'hull_edges': [(0, 2)],
+            'hull_edges': [(0, 2, 'main')],
             'title': 'Case I: Single Edge (Collinear)',
-            'desc': r'$P_0, P_1, P_2$ collinear $\Rightarrow$ one slope $\sigma$',
-            'color': COLORS['primary']
+            'desc': r'Points collinear $\to$ Single slope $\sigma$',
+            'color': '#2E8B57',  # SeaGreen
         },
-        # Case 2: Two edges (P0-P1, P1-P2) - only steepest is Puiseux slope
         {
             'e_vals': [0, 0.8, 1.2],
-            'hull_edges': [(0, 1, 'main'), (1, 2, 'secondary')],  # main = Puiseux slope
+            'hull_edges': [(0, 1, 'main'), (1, 2, 'secondary')],
             'title': 'Case II: Two-Edge Convex Break',
-            'desc': r'Lower hull has 2 segments; ONLY steepest $\sigma_{\max}$ gives $p$',
-            'color': COLORS['accent1']
+            'desc': r'Break in hull: Steepest $\sigma$ wins',
+            'color': '#E69F00',  # Orange
         },
-        # Case 3: P1 above line (skip P1)
         {
             'e_vals': [0, 1.4, 1.2],
-            'hull_edges': [(0, 2)],
+            'hull_edges': [(0, 2, 'main')],
+            'extra_points': [(1, 1.4)],
             'title': 'Case III: Point Above Hull',
-            'desc': r'$P_1$ above lower convex hull $\Rightarrow$ does not contribute',
-            'color': COLORS['accent2']
+            'desc': r'Point above hull is ignored',
+            'color': '#56B4E9',  # SkyBlue
         },
-        # Case 4: Horizontal segment (degenerate, no Puiseux step)
         {
             'e_vals': [0, 0.67, 0.67],
-            'hull_edges': [(0, 1), (1, 2, 'horizontal')],
-            'title': 'Case IV: Horizontal Edge (Degenerate)',
-            'desc': r'Horizontal edge: $\sigma = 0 \Rightarrow$ no valid Puiseux step',
-            'color': COLORS['secondary']
-        }
+            'hull_edges': [(0, 1, 'main'), (1, 2, 'horizontal')],
+            'title': 'Case IV: Horizontal Edge',
+            'desc': r'Horizontal edge $\sigma=0 \to$ No step',
+            'color': '#CC79A7',  # Reddish Purple
+        },
     ]
-    
+
     for idx, (ax, case) in enumerate(zip(axes.flat, cases)):
-        k_vals = [0, 1, 2]
-        e_vals = case['e_vals']
-        
-        # Plot all three points (IMPROVED: smaller dots, cleaner labels)
-        for i, (k, e) in enumerate(zip(k_vals, e_vals)):
-            # Check if point is on hull
-            on_hull = any(i in edge[:2] for edge in case['hull_edges'])
-            color = case['color'] if on_hull else 'gray'
-            size = 10 if on_hull else 7  # Smaller dots
-            alpha = 1.0 if on_hull else 0.4
-            
-            ax.plot(k, e, 'o', markersize=size, color=color, alpha=alpha, zorder=4)
-            
-            # IMPROVED: Cleaner label format
-            label = f'$({k},{e:.2g})$'  # Remove P_i, just coordinates
-            offset = (0.08, 0.10) if i != 1 else (0.08, -0.12)
-            ax.text(k + offset[0], e + offset[1], label, 
-                   fontsize=ANNO_FS, alpha=alpha, ha='left', va='bottom')
-        
-        # Draw hull edges (IMPROVED: distinguish main/secondary slopes)
-        for edge_idx, edge in enumerate(case['hull_edges']):
-            if len(edge) == 3 and edge[2] == 'horizontal':  # Horizontal (Case IV)
-                i, j = edge[0], edge[1]
-                ax.plot([k_vals[i], k_vals[j]], [e_vals[i], e_vals[j]], 
-                       '--', linewidth=2.5, color='gray', alpha=0.7, zorder=2,
-                       label='Non-Puiseux edge')
-                ax.text((k_vals[i] + k_vals[j])/2, e_vals[i] + 0.15, 
-                       r'$\sigma=0$ (no $p$)', fontsize=ANNO_FS, ha='center', 
-                       style='italic', color='gray',
-                       bbox=dict(boxstyle='round,pad=0.3', facecolor='white', alpha=0.8))
+        k_vals = np.array([0, 1, 2])
+        e_vals = np.array(case['e_vals'])
+        main_color = case['color']
+
+        # Compute hull baseline for shading (simple interpolation; Case II uses actual e_vals)
+        if idx == 1:
+            hull_y = e_vals
+        else:
+            hull_y = np.interp(k_vals, [0, 2], [e_vals[0], e_vals[2]])
+
+        ax.fill_between(k_vals if idx == 1 else [0, 2], hull_y, -0.5,
+                        color=main_color, alpha=0.12, zorder=1)
+
+        # Plot points with hollow styling; ignored points pushed back
+        extra_pts = case.get('extra_points', [])
+        ignored_mask = {(k, e) for k, e in extra_pts}
+        for k, e in zip(k_vals, e_vals):
+            is_ignored = (k, e) in ignored_mask
+            pt_face = 'white'
+            edge_col = 'gray' if is_ignored else main_color
+            inner_col = 'lightgray' if is_ignored else main_color
+            z_pt = 3 if is_ignored else 5
+
+            ax.plot(k, e, 'o', markersize=9, color=pt_face,
+                    markeredgecolor=edge_col, markeredgewidth=2, zorder=z_pt)
+            if not is_ignored:
+                ax.plot(k, e, 'o', markersize=5, color=inner_col, zorder=z_pt)
+
+            ax.text(
+                k,
+                e + 0.12,
+                f'({k}, {e:.2g})',
+                ha='center',
+                fontsize=AXIS_FONT - 2,
+                color='#333',
+                zorder=6,
+            )
+
+        # Draw hull and secondary edges with clear hierarchy
+        legend_handles = []
+        for edge in case['hull_edges']:
+            i, j, role = edge
+            slope = (e_vals[j] - e_vals[i]) / (k_vals[j] - k_vals[i]) if k_vals[j] != k_vals[i] else 0.0
+            mid_k = (k_vals[i] + k_vals[j]) / 2
+            mid_e = (e_vals[i] + e_vals[j]) / 2
+
+            if role == 'horizontal':
+                line = ax.plot([k_vals[i], k_vals[j]], [e_vals[i], e_vals[j]],
+                               '--', color='gray', linewidth=2, alpha=0.7,
+                               zorder=2, label=r'$\sigma=0$ (no $p$)')[0]
+                ax.text(mid_k, mid_e - 0.18, r'$\sigma=0$', ha='center',
+                        color='gray', fontsize=AXIS_FONT - 2)
+                legend_handles.append(line)
+                continue
+
+            is_main = role == 'main'
+            line_color = main_color if is_main else COLORS['light_gray']
+            line_width = 3.5 if is_main else 1.8
+            line_style = '-' if is_main else '--'
+            line_alpha = 0.95 if is_main else 0.55
+
+            line = ax.plot([k_vals[i], k_vals[j]], [e_vals[i], e_vals[j]],
+                           line_style, color=line_color, linewidth=line_width,
+                           alpha=line_alpha, zorder=2 if is_main else 2.5,
+                           label='Main slope' if is_main else 'Secondary (ignored)')[0]
+            if is_main:
+                p_val = 1.0 / abs(slope) if abs(slope) > 1e-6 else np.inf
+                offset = (-20, 20) if idx == 1 else (-10, 20)
+                ax.annotate(
+                    f'$\\sigma={slope:.2f}$\n$p={p_val:.2f}$',
+                    xy=(mid_k, mid_e),
+                    xytext=offset,
+                    textcoords='offset points',
+                    ha='right',
+                    fontsize=AXIS_FONT - 1,
+                    color='white',
+                    fontweight='bold',
+                    bbox=dict(boxstyle='round,pad=0.35', fc=line_color, ec='none', alpha=0.95),
+                    arrowprops=dict(arrowstyle='->', color=line_color, lw=1.5),
+                )
             else:
-                i, j = edge[0], edge[1]
-                # Check if this is main or secondary edge (Case II)
-                is_main = (len(edge) < 3) or (edge[2] == 'main')
-                linewidth = 4.0 if is_main else 2.0
-                linestyle = '-' if is_main else '--'
-                edge_alpha = 0.9 if is_main else 0.5
-                
-                ax.plot([k_vals[i], k_vals[j]], [e_vals[i], e_vals[j]], 
-                       linestyle, linewidth=linewidth, color=case['color'], 
-                       zorder=3, alpha=edge_alpha,
-                       label='Lower hull edge' if is_main and edge_idx == 0 else None)
-                
-                # ONLY annotate main slope (steepest) for Case II
-                if k_vals[j] != k_vals[i] and is_main:
-                    slope = (e_vals[j] - e_vals[i]) / (k_vals[j] - k_vals[i])
-                    p = 1 / abs(slope) if slope != 0 else float('inf')
-                    mid_k = (k_vals[i] + k_vals[j]) / 2
-                    mid_e = (e_vals[i] + e_vals[j]) / 2
-                    
-                    # IMPROVED: Show formula p = 1/|σ|
-                    ax.annotate(f'$\\sigma={slope:.2f}$\n$p=1/|\\sigma|={p:.2f}$', 
-                               xy=(mid_k, mid_e), 
-                               xytext=(mid_k + 0.35, mid_e + 0.18),
-                               fontsize=ANNO_FS, color=case['color'], fontweight='bold',
-                               bbox=dict(boxstyle='round,pad=0.35', 
-                                       facecolor='white', alpha=0.9, 
-                                       edgecolor=case['color'], linewidth=1.5),
-                               arrowprops=dict(arrowstyle='->', color=case['color'], lw=1.5))
-                elif not is_main:  # Secondary edge (Case II only)
-                    slope = (e_vals[j] - e_vals[i]) / (k_vals[j] - k_vals[i])
-                    mid_k = (k_vals[i] + k_vals[j]) / 2
-                    mid_e = (e_vals[i] + e_vals[j]) / 2
-                    ax.text(mid_k, mid_e - 0.15, f'$\\sigma={slope:.2f}$\n(not used)', 
-                           fontsize=ANNO_FS, ha='center', style='italic', color='gray')
-        
-        # Shade below hull
-        if case['hull_edges'][0][1] == 2:  # Direct connection
-            ax.fill_between([0, 2], [e_vals[0], e_vals[2]], -0.2,
-                           alpha=0.12, color=case['color'])
-        else:  # Two segments
-            ax.fill_between([0, 1, 2], [e_vals[0], e_vals[1], e_vals[2]], -0.2,
-                           alpha=0.12, color=case['color'])
-        
-        # Formatting (IMPROVED: fixed y-axis ticks, cleaner grid)
-        ax.set_xlim(-0.3, 2.5)
-        
-        # FIXED: Ensure monotonic y-axis ticks
-        y_max = max(e_vals) + 0.35
-        y_min = -0.15
-        ax.set_ylim(y_min, y_max)
-        y_ticks = np.linspace(0, np.ceil(y_max * 2) / 2, 5)  # 5 evenly spaced ticks
-        ax.set_yticks(y_ticks)
-        ax.set_yticklabels([f'{y:.2g}' for y in y_ticks])
-        
-        apply_axis_styling(
-            ax,
-            xlabel=r'Derivative order $k$',
-            ylabel=r'Power offset $e_k$',
-            title=case['title'],
-            rotate_xticks=True,
-            x_locator=MaxNLocator(integer=True, nbins=4)
+                ax.annotate(
+                    f'$\\sigma={slope:.2f}$\n(ignored)',
+                    xy=(mid_k, mid_e),
+                    xytext=(10, -30),
+                    textcoords='offset points',
+                    ha='left',
+                    fontsize=AXIS_FONT - 2,
+                    color='gray',
+                    arrowprops=dict(arrowstyle='->', color='gray', alpha=0.5),
+                )
+
+            legend_handles.append(line)
+
+        # Axes styling
+        ax.set_title(case['title'], fontsize=AXIS_FONT + 1, fontweight='bold', pad=8)
+        ax.set_xlim(-0.2, 2.2)
+        ax.set_ylim(-0.2, 2.0)
+        ax.set_xticks(k_vals)
+        ax.set_yticks([0, 0.5, 1.0, 1.5, 2.0])
+        ax.tick_params(labelsize=TICK_FONT)
+        ax.xaxis.set_major_locator(MaxNLocator(integer=True))
+        ax.grid(True, linestyle=':', alpha=0.25, linewidth=0.6)
+        ax.spines['top'].set_visible(False)
+        ax.spines['right'].set_visible(False)
+        ax.set_xlabel('Derivative order $k$', fontsize=AXIS_FONT, fontweight='bold')
+        ax.set_ylabel('Power offset $e_k$', fontsize=AXIS_FONT, fontweight='bold')
+        ax.text(
+            0.5,
+            0.05,
+            case['desc'],
+            transform=ax.transAxes,
+            fontsize=AXIS_FONT,
+            ha='center',
+            bbox=dict(boxstyle='round', facecolor='#f0f0f0', alpha=0.8, edgecolor='none'),
         )
-        ax.text(0.5, 0.03, case['desc'], transform=ax.transAxes, 
-               fontsize=AXIS_FONT, ha='center', style='italic',
-               bbox=dict(boxstyle='round,pad=0.4', facecolor=COLORS['highlight'], alpha=0.8))
-        ax.grid(True, alpha=0.2, linestyle=':', linewidth=0.6)  # Ultra-light grid
-        add_headroom(ax)
-        
-        # Add legend if applicable
-        if idx == 1:  # Case II has main/secondary distinction
-            styled_legend(ax, loc='upper left')
-    
+        ax.set_box_aspect(1)
+
+        if idx == 1:
+            styled_legend(
+                ax,
+                loc='upper left',
+                handles=legend_handles,
+                edgecolor='gray',
+                framealpha=0.9,
+                ncol=1,
+                borderpad=0.5,
+            )
+
+    plt.tight_layout()
+    plt.subplots_adjust(top=0.94)
     save_figure(fig, 'figNP1_newton_polygon_general.pdf', 'section3')
     save_figure(fig, 'figNP1_newton_polygon_general.png', 'section3')
     plt.close()
