@@ -752,7 +752,7 @@ def create_figNP2_newton_polygon_mother():
         r'$P_2=(2,\frac{2}{3})$'
     ]
     # Adjusted offsets to avoid overlap and keep P0 clear of the y-axis
-    offsets = [(0.1, 0.05), (-0.45, 0.08), (0.18, 0.08)]
+    offsets = [(0.1, 0.1), (-0.45, 0.08), (0.18, 0.08)]
     for k, e, label, offset in zip(k_vals, e_vals, labels, offsets):
         alpha_text = 0.5 if label == labels[1] else 1.0
         ax.annotate(label, xy=(k, e), xytext=(k + offset[0], e + offset[1]),
@@ -782,9 +782,9 @@ def create_figNP2_newton_polygon_mother():
     
     # Result box - MOVED TO TOP LEFT (clear space near P1)
     textstr = r'$\sigma = \frac{1}{3} \quad \Rightarrow \quad p = \frac{1}{|\sigma|} = 3$'
-    props = dict(boxstyle='round,pad=0.5', facecolor=COLORS['accent1'],
-                alpha=0.95, edgecolor=main_color, linewidth=2)
-    ax.text(0.05, 0.92, textstr, transform=ax.transAxes, fontsize=PANEL_FS,
+    props = dict(boxstyle='round,pad=0.45', facecolor=COLORS['accent1'],
+                alpha=0.9, edgecolor=main_color, linewidth=1.8)
+    ax.text(0.02, 0.9, textstr, transform=ax.transAxes, fontsize=AXIS_FONT + 1,
             verticalalignment='top', horizontalalignment='left', bbox=props, clip_on=False)
 
     apply_axis_styling(
@@ -793,16 +793,14 @@ def create_figNP2_newton_polygon_mother():
         ylabel=r'Power offset $e_k$',
         title=r'Newton Polygon for $9x^{4/3}y^{\prime\prime} + 6x^{1/3}y^{\prime} + y = 0$',
         rotate_xticks=True,
-        x_locator=MaxNLocator(integer=True, nbins=4)
+        x_locator=MaxNLocator(integer=True, nbins=4),
+        title_fs=AXIS_FONT
     )
     ax.grid(True, alpha=0.3, linestyle='--', linewidth=0.6)
 
     # Keep curves flush to the frame with minimal padding (clip_on already enabled)
-    x_min, x_max = k_vals.min(), k_vals.max()
-    y_min = min(-0.12, e_vals.min())
-    y_max = e_vals.max() + 0.05
-    ax.set_xlim(x_min, x_max)
-    ax.set_ylim(y_min, y_max)
+    ax.set_xlim(-0.2, 2.4)
+    ax.set_ylim(-0.12, 1.0)
     ax.margins(x=0.0, y=0.0)
     
     save_figure(fig, 'figNP2_newton_polygon_mother.pdf', 'section3')
