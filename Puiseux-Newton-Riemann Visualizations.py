@@ -527,12 +527,12 @@ def create_figNP1_newton_polygon_general():
 
         # Compute hull baseline for shading (simple interpolation; Case II uses actual e_vals)
         if idx == 1:
-            hull_y = e_vals
+            hull_x, hull_y = k_vals, e_vals
         else:
-            hull_y = np.interp(k_vals, [0, 2], [e_vals[0], e_vals[2]])
+            hull_x = np.array([0, 2])
+            hull_y = np.array([e_vals[0], e_vals[2]])
 
-        ax.fill_between(k_vals if idx == 1 else [0, 2], hull_y, -0.5,
-                        color=main_color, alpha=0.12, zorder=1)
+        ax.fill_between(hull_x, hull_y, -0.5, color=main_color, alpha=0.12, zorder=1)
 
         # Plot points with hollow styling; ignored points pushed back
         extra_pts = case.get('extra_points', [])
