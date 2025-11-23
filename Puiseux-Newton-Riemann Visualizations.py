@@ -890,7 +890,7 @@ def create_fig_threeleaf_structure():
     print("Creating Figure: Three-Leaf Riemann Surface (3D + 2D Inset)")
     print("="*60)
 
-    fig = plt.figure(figsize=(FIGSIZE_SINGLE[0] * 2, FIGSIZE_SINGLE[1]), constrained_layout=True)
+    fig = plt.figure(figsize=(16, 6), constrained_layout=True)
 
     # Unified palette shared by the 2D range view and 3D surface
     sheet_colors = [COLORS['primary'], COLORS['accent1'], COLORS['accent2']]
@@ -930,7 +930,7 @@ def create_fig_threeleaf_structure():
     ax2.set_box_aspect(1)
     ax2.margins(x=0.02, y=0.02)
     ax2.axis('off')
-    ax2.set_title(r'Image on the $w$-plane (Range View)', fontsize=AXIS_FONT + 2, fontweight='bold', pad=18, y=1.03)
+    ax2.set_title(r'Image on the $w$-plane (Range View)', fontsize=13, fontweight='bold', pad=20, y=1.04)
     ax2.text(0.5, 0.03, r'Sheet 0 maps the full $x$-plane to this $120^\circ$ sector',
              transform=ax2.transAxes, fontsize=AXIS_FONT, ha='center', style='italic',
              bbox=dict(boxstyle='round,pad=0.4', facecolor=COLORS['highlight'], alpha=0.9), clip_on=False)
@@ -982,8 +982,26 @@ def create_fig_threeleaf_structure():
     ax.set_ylabel(r'$\mathrm{Im}(x)$', fontsize=AXIS_FONT, fontweight='bold')
     ax.set_zlabel('Sheet index', fontsize=AXIS_FONT, fontweight='bold')
     ax.tick_params(labelsize=TICK_FONT)
-    ax.set_title('Three-Sheeted Riemann Surface for $x^{1/3}$ (Helicoid View)', fontsize=AXIS_FONT + 3, pad=18, y=1.03, fontweight='bold')
+    ax.set_title('Three-Sheeted Riemann Surface for $x^{1/3}$ (Helicoid View)', fontsize=13, pad=20, y=1.04, fontweight='bold')
     ax.set_box_aspect((1, 1, 0.8))
+
+    # Minimal legend placed outside the plotting area to avoid occlusion
+    legend_elements = [
+        plt.Line2D([0], [0], color='k', lw=1.4, linestyle='--', label='Branch cut'),
+        plt.Line2D([0], [0], color='k', lw=2.0, label='Branch point axis')
+    ]
+    legend = styled_legend(
+        ax,
+        loc='upper right',
+        bbox_to_anchor=(-0.08, 1.02),
+        handles=legend_elements,
+        framealpha=0.9,
+        borderpad=0.5,
+        linewidth=0.5,
+    )
+    if legend:
+        for text in legend.get_texts():
+            text.set_fontsize(9)
 
     # Inline labels for structural guides to avoid legend clutter
     ax.text2D(0.06, 0.92, 'Branch cut (dashed)', transform=ax.transAxes, fontsize=AXIS_FONT,
