@@ -870,84 +870,17 @@ def create_fig_riemann_lift():
 # ============================================================================
 
 def create_fig_threeleaf_structure():
-    """3D visualization of three-sheeted Riemann surface with 2D sheet-index inset."""
+    """3D visualization of three-sheeted Riemann surface with 2D range mapping."""
     print("\n" + "="*60)
     print("Creating Figure: Three-Leaf Riemann Surface (3D + 2D Inset)")
     print("="*60)
-    
+
     fig = plt.figure(figsize=(FIGSIZE_SINGLE[0] * 2, FIGSIZE_SINGLE[1]), constrained_layout=True)
-    ax = fig.add_subplot(121, projection='3d')
-    
-    # Create three sheets
-    theta = np.linspace(0, 2*np.pi, 100)
-    r = np.linspace(0.1, 2, 50)
-    Theta, R = np.meshgrid(theta, r)
-    
-    colors_sheets = [COLORS['primary'], COLORS['accent1'], COLORS['accent2']]
-    alphas = [0.6, 0.5, 0.4]
-    labels = ['Sheet 0: $w_0 = x^{1/3}$', 
-              r'Sheet 1: $w_1 = e^{2\pi i/3}x^{1/3}$',
-              r'Sheet 2: $w_2 = e^{4\pi i/3}x^{1/3}$']
-    
-    for i, (color, alpha, label) in enumerate(zip(colors_sheets, alphas, labels)):
-        Z = i * 0.5 * np.ones_like(R)  # Height offset for each sheet
-        X = R * np.cos(Theta)
-        Y = R * np.sin(Theta)
-        
-        surf = ax.plot_surface(X, Y, Z, alpha=alpha, color=color, 
-                              edgecolor='none', label=label)
-        
-        # Add branch cut
-        branch_cut_r = np.linspace(0.1, 2, 20)
-        branch_cut_x = -branch_cut_r
-        branch_cut_y = np.zeros_like(branch_cut_r)
-        branch_cut_z = i * 0.5 * np.ones_like(branch_cut_r)
-        ax.plot(branch_cut_x, branch_cut_y, branch_cut_z, 
-               'k--', linewidth=2, alpha=0.7)
-    
-    # Add connecting curves showing sheet transitions
-    theta_connect = np.linspace(np.pi, 3*np.pi, 50)
-    r_connect = 1.5
-    for i in range(3):
-        theta_start = np.pi + i * 2*np.pi/3
-        theta_segment = theta_start + np.linspace(0, 2*np.pi/3, 30)
-        x_conn = r_connect * np.cos(theta_segment)
-        y_conn = r_connect * np.sin(theta_segment)
-        z_conn = np.linspace(i * 0.5, ((i+1) % 3) * 0.5, 30)
-        ax.plot(x_conn, y_conn, z_conn, 'r-', linewidth=2.5, alpha=0.8)
-    
-    # Mark branch point
-    ax.scatter([0], [0], [0], color='black', s=90, marker='o', 
-              label='Branch point $x=0$')
-    
-    ax.set_xlabel(r'$\mathrm{Re}(x)$', fontsize=AXIS_FONT, fontweight='bold')
-    ax.set_ylabel(r'$\mathrm{Im}(x)$', fontsize=AXIS_FONT, fontweight='bold')
-    ax.set_zlabel('Sheet index', fontsize=AXIS_FONT, fontweight='bold')
-    ax.tick_params(labelsize=TICK_FONT)
-    ax.set_title('Three-Sheeted Riemann Surface for $x^{1/3}$ (3D Ribbon View)', fontsize=AXIS_FONT + 3, pad=12, fontweight='bold')
-    ax.set_box_aspect((1, 1, 0.6))
-    
-    # Manual legend
-    legend_elements = [
-        plt.Line2D([0], [0], color=colors_sheets[0], lw=4, alpha=0.7, label=labels[0]),
-        plt.Line2D([0], [0], color=colors_sheets[1], lw=4, alpha=0.7, label=labels[1]),
-        plt.Line2D([0], [0], color=colors_sheets[2], lw=4, alpha=0.7, label=labels[2]),
-        plt.Line2D([0], [0], color='k', lw=2, linestyle='--', label='Branch cut'),
-        plt.Line2D([0], [0], color='r', lw=2, label='Sheet connection')
-    ]
-    styled_legend(ax, loc='upper left', handles=legend_elements)
-    
-    # Add deck map annotation
-    ax.text2D(0.5, 0.97, r'Deck map: $g(w) = e^{2\pi i/3} w$ (rotation by $120^\circ$)', 
-             transform=ax.transAxes, fontsize=AXIS_FONT, ha='center', va='top',
-             style='italic', bbox=dict(boxstyle='round,pad=0.4', facecolor=COLORS['highlight'], alpha=0.9))
-    
-    ax.view_init(elev=25, azim=45)
-    
-    # RIGHT: 2D sheet-index inset (top-down view)
-    ax2 = fig.add_subplot(122)
-    angles = np.linspace(0, 2*np.pi, 100)
+
+    # LEFT: value image on the w-plane (range view)
+    ax2 = fig.add_subplot(121)
     radius = 1.8
+    sector_labels = [r'$w(\mathrm{Sheet}_0)$', r'$w(\mathrm{Sheet}_1)$', r'$w(\mathrm{Sheet}_2)$']
     for i in range(3):
         start_angle = i * 2 * np.pi / 3
         end_angle = (i + 1) * 2 * np.pi / 3
@@ -958,33 +891,100 @@ def create_fig_threeleaf_structure():
         y_sector = np.append(y_sector, [0])
         color = [COLORS['primary'], COLORS['accent1'], COLORS['accent2']][i]
         ax2.fill(x_sector, y_sector, color=color, alpha=0.6, edgecolor='black', linewidth=1.5)
-        # Sheet labels
+        # Sector labels describing the image on the w-plane
         mid_angle = (start_angle + end_angle) / 2
         label_x = 0.8 * radius * np.cos(mid_angle)
         label_y = 0.8 * radius * np.sin(mid_angle)
-        ax2.text(label_x, label_y, f'Sheet {i}', fontsize=AXIS_FONT + 2, ha='center', va='center',
-                fontweight='bold', bbox=dict(boxstyle='round,pad=0.4', facecolor='white', alpha=0.95, linewidth=1.5))
-    
-    # Branch point
+        ax2.text(label_x, label_y, sector_labels[i], fontsize=AXIS_FONT + 2, ha='center', va='center',
+                 fontweight='bold', bbox=dict(boxstyle='round,pad=0.4', facecolor='white', alpha=0.95, linewidth=1.5),
+                 clip_on=False)
+
+    # Branch point and boundaries
     ax2.plot(0, 0, 'ko', markersize=13, zorder=5)
-    ax2.text(0, -0.35, r'$x=0$ (branch point)', fontsize=AXIS_FONT, ha='center', fontweight='bold')
-    
-    # Add radial lines showing boundaries
+    ax2.text(0, -0.35, r'$x=0$ (branch point)', fontsize=AXIS_FONT, ha='center', fontweight='bold', clip_on=False)
     for i in range(3):
         angle = i * 2 * np.pi / 3
-        ax2.plot([0, radius * np.cos(angle)], [0, radius * np.sin(angle)], 
-                'k-', linewidth=1.6, alpha=0.7, zorder=4)
-    
+        ax2.plot([0, radius * np.cos(angle)], [0, radius * np.sin(angle)],
+                 'k-', linewidth=1.6, alpha=0.7, zorder=4)
+
     ax2.set_xlim(-2.3, 2.3)
     ax2.set_ylim(-2.3, 2.3)
     ax2.set_box_aspect(1)
     ax2.margins(x=0.02, y=0.02)
     ax2.axis('off')
-    ax2.set_title(r'2D Sheet-Index Map (Top-Down View)', fontsize=AXIS_FONT + 2, fontweight='bold', pad=8)
-    ax2.text(0.5, 0.03, r'Each sheet covers a $120^\circ$ sector in $\mathrm{arg}(x)$', 
-            transform=ax2.transAxes, fontsize=AXIS_FONT, ha='center', style='italic',
-            bbox=dict(boxstyle='round,pad=0.4', facecolor=COLORS['highlight'], alpha=0.9))
+    ax2.set_title(r'Image on the $w$-plane (Range View)', fontsize=AXIS_FONT + 2, fontweight='bold', pad=8)
+    ax2.text(0.5, 0.03, r'Sheet 0 maps the full $x$-plane to this $120^\circ$ sector',
+             transform=ax2.transAxes, fontsize=AXIS_FONT, ha='center', style='italic',
+             bbox=dict(boxstyle='round,pad=0.4', facecolor=COLORS['highlight'], alpha=0.9), clip_on=False)
+
+    # RIGHT: 3D helicoid-style Riemann surface
+    ax = fig.add_subplot(122, projection='3d')
     
+    # Create three sheets
+    theta = np.linspace(0, 2*np.pi, 100)
+    r = np.linspace(0.1, 2, 50)
+    Theta, R = np.meshgrid(theta, r)
+    
+    colors_sheets = [COLORS['primary'], COLORS['accent1'], COLORS['accent2']]
+    alphas = [0.6, 0.5, 0.4]
+    labels = ['Sheet 0: $w_0 = x^{1/3}$',
+              r'Sheet 1: $w_1 = e^{2\pi i/3}x^{1/3}$',
+              r'Sheet 2: $w_2 = e^{4\pi i/3}x^{1/3}$']
+    height_step = 0.55
+
+    for i, (color, alpha, label) in enumerate(zip(colors_sheets, alphas, labels)):
+        base_z = i * height_step
+        Z = base_z + (Theta / (2 * np.pi)) * height_step  # helicoid lift
+        X = R * np.cos(Theta)
+        Y = R * np.sin(Theta)
+
+        surf = ax.plot_surface(X, Y, Z, alpha=alpha, color=color,
+                               edgecolor='none', label=label)
+        ax.plot_wireframe(X, Y, Z, rstride=6, cstride=10, color=color, linewidth=0.4, alpha=0.5)
+
+        # Circular edge outline for better contour perception
+        boundary_x = 2 * np.cos(theta)
+        boundary_y = 2 * np.sin(theta)
+        boundary_z = base_z + (theta / (2 * np.pi)) * height_step
+        ax.plot(boundary_x, boundary_y, boundary_z, color=color, linewidth=1.2, alpha=0.9)
+
+        # Branch cut traced as a dashed line along the negative real axis
+        branch_cut_r = np.linspace(0.1, 2, 40)
+        branch_cut_x = -branch_cut_r
+        branch_cut_y = np.zeros_like(branch_cut_r)
+        branch_cut_z = base_z + (np.pi / (2 * np.pi)) * height_step * np.ones_like(branch_cut_r)
+        ax.plot(branch_cut_x, branch_cut_y, branch_cut_z,
+                'k--', linewidth=1.4, alpha=0.7)
+    
+    # Mark branch point axis
+    z_axis = np.linspace(0, height_step * 3, 50)
+    ax.plot(np.zeros_like(z_axis), np.zeros_like(z_axis), z_axis, color='black', linewidth=2.0, label='Branch point axis')
+    ax.scatter([0], [0], [0], color='black', s=90, marker='o', zorder=5)
+    
+    ax.set_xlabel(r'$\mathrm{Re}(x)$', fontsize=AXIS_FONT, fontweight='bold')
+    ax.set_ylabel(r'$\mathrm{Im}(x)$', fontsize=AXIS_FONT, fontweight='bold')
+    ax.set_zlabel('Sheet index', fontsize=AXIS_FONT, fontweight='bold')
+    ax.tick_params(labelsize=TICK_FONT)
+    ax.set_title('Three-Sheeted Riemann Surface for $x^{1/3}$ (Helicoid View)', fontsize=AXIS_FONT + 3, pad=12, fontweight='bold')
+    ax.set_box_aspect((1, 1, 0.8))
+    
+    # Manual legend
+    legend_elements = [
+        plt.Line2D([0], [0], color=colors_sheets[0], lw=4, alpha=0.7, label=labels[0]),
+        plt.Line2D([0], [0], color=colors_sheets[1], lw=4, alpha=0.7, label=labels[1]),
+        plt.Line2D([0], [0], color=colors_sheets[2], lw=4, alpha=0.7, label=labels[2]),
+        plt.Line2D([0], [0], color='k', lw=2, linestyle='--', label='Branch cut'),
+        plt.Line2D([0], [0], color='black', lw=2, label='Branch point axis')
+    ]
+    styled_legend(ax, loc='upper left', handles=legend_elements)
+    
+    # Add deck map annotation
+    ax.text2D(0.5, 0.97, r'Deck map: $g(w) = e^{2\pi i/3} w$ (rotation by $120^\circ$)', 
+             transform=ax.transAxes, fontsize=AXIS_FONT, ha='center', va='top',
+             style='italic', bbox=dict(boxstyle='round,pad=0.4', facecolor=COLORS['highlight'], alpha=0.9))
+    
+    ax.view_init(elev=32, azim=52)
+
     save_figure(fig, 'fig_threeleaf_structure.pdf', 'section4')
     save_figure(fig, 'fig_threeleaf_structure.png', 'section4')
     plt.close()
