@@ -525,13 +525,16 @@ def create_figNP1_newton_polygon_general():
         e_vals = np.array(case['e_vals'])
         main_color = case['color']
 
-        # Compute hull baseline for shading (simple interpolation; Case II uses actual e_vals)
-        if idx == 1:
-            hull_y = e_vals
+        # Compute hull baseline for shading
+        # Case III ignores the middle point, others follow the full path
+        if idx == 2:
+            hull_k = np.array([k_vals[0], k_vals[-1]])
+            hull_y = np.array([e_vals[0], e_vals[-1]])
         else:
-            hull_y = np.interp(k_vals, [0, 2], [e_vals[0], e_vals[2]])
+            hull_k = k_vals
+            hull_y = e_vals
 
-        ax.fill_between(k_vals, hull_y, -0.5, color=main_color, alpha=0.12, zorder=1)
+        ax.fill_between(hull_k, hull_y, -0.5, color=main_color, alpha=0.12, zorder=1)
 
         # Plot points with hollow styling; ignored points pushed back
         extra_pts = case.get('extra_points', [])
@@ -543,10 +546,27 @@ def create_figNP1_newton_polygon_general():
             inner_col = 'lightgray' if is_ignored else main_color
             z_pt = 3 if is_ignored else 5
 
-            ax.plot(k, e, 'o', markersize=9, color=pt_face,
-                    markeredgecolor=edge_col, markeredgewidth=2, zorder=z_pt)
+            ax.plot(
+                k,
+                e,
+                'o',
+                markersize=9,
+                color=pt_face,
+                markeredgecolor=edge_col,
+                markeredgewidth=2,
+                zorder=z_pt,
+                clip_on=False,
+            )
             if not is_ignored:
-                ax.plot(k, e, 'o', markersize=5, color=inner_col, zorder=z_pt)
+                ax.plot(
+                    k,
+                    e,
+                    'o',
+                    markersize=5,
+                    color=inner_col,
+                    zorder=z_pt,
+                    clip_on=False,
+                )
 
             ax.text(
                 k,
@@ -567,9 +587,17 @@ def create_figNP1_newton_polygon_general():
             mid_e = (e_vals[i] + e_vals[j]) / 2
 
             if role == 'horizontal':
-                line = ax.plot([k_vals[i], k_vals[j]], [e_vals[i], e_vals[j]],
-                               '--', color='gray', linewidth=2, alpha=0.7,
-                               zorder=2, label=r'$\sigma=0$ (no $p$)')[0]
+                line = ax.plot(
+                    [k_vals[i], k_vals[j]],
+                    [e_vals[i], e_vals[j]],
+                    '--',
+                    color='gray',
+                    linewidth=2,
+                    alpha=0.7,
+                    zorder=2,
+                    label=r'$\sigma=0$ (no $p$)',
+                    clip_on=False,
+                )[0]
                 ax.text(mid_k, mid_e - 0.18, r'$\sigma=0$', ha='center',
                         color='gray', fontsize=AXIS_FONT - 2)
                 legend_handles.append(line)
@@ -581,10 +609,17 @@ def create_figNP1_newton_polygon_general():
             line_style = '-' if is_main else '--'
             line_alpha = 0.95 if is_main else 0.55
 
-            line = ax.plot([k_vals[i], k_vals[j]], [e_vals[i], e_vals[j]],
-                           line_style, color=line_color, linewidth=line_width,
-                           alpha=line_alpha, zorder=2 if is_main else 2.5,
-                           label='Main slope' if is_main else 'Secondary (ignored)')[0]
+            line = ax.plot(
+                [k_vals[i], k_vals[j]],
+                [e_vals[i], e_vals[j]],
+                line_style,
+                color=line_color,
+                linewidth=line_width,
+                alpha=line_alpha,
+                zorder=2 if is_main else 2.5,
+                label='Main slope' if is_main else 'Secondary (ignored)',
+                clip_on=False,
+            )[0]
             if is_main:
                 p_val = 1.0 / abs(slope) if abs(slope) > 1e-6 else np.inf
                 offset = (-20, 20) if idx == 1 else (-10, 20)
@@ -616,10 +651,10 @@ def create_figNP1_newton_polygon_general():
 
         # Axes styling
         ax.set_title(case['title'], fontsize=AXIS_FONT + 1, fontweight='bold', pad=8)
-        ax.set_xlim(-0.2, 2.2)
-        ax.set_ylim(-0.2, 2.0)
+        ax.set_xlim(0, 2)
+        ax.set_ylim(0, e_vals.max())
         ax.set_xticks(k_vals)
-        ax.set_yticks([0, 0.5, 1.0, 1.5, 2.0])
+        ax.yaxis.set_major_locator(MaxNLocator(nbins=5))
         ax.tick_params(labelsize=TICK_FONT)
         ax.xaxis.set_major_locator(MaxNLocator(integer=True))
         ax.grid(True, linestyle=':', alpha=0.25, linewidth=0.6)
